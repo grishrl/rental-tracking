@@ -152,7 +152,7 @@
             </v-row>
             <v-row v-else>
               <v-col v-for="bucket in buckets" :key="bucket.id" cols="12" md="6" lg="4">
-                <v-card outlined>
+                <v-card outlined class="bucket-card">
                   <v-card-text>
                     <div class="d-flex align-center mb-2">
                       <v-avatar :color="bucket.color || 'primary'" size="32" class="mr-3">
@@ -188,6 +188,17 @@
                     >
                       <v-icon left small>mdi-plus</v-icon>
                       Add Funds
+                    </v-btn>
+
+                    <v-btn
+                      small
+                      variant="text"
+                      block
+                      class="mt-2"
+                      @click="openBucketDetails(bucket)"
+                    >
+                      <v-icon left small>mdi-eye</v-icon>
+                      View Details
                     </v-btn>
                   </v-card-text>
                 </v-card>
@@ -304,7 +315,7 @@
                 <div class="pl-1">
                   <div class="d-flex align-center">
                     <v-icon 
-                      :color="event.type === 'income' ? 'success' : event.type === 'expense' ? 'error' : 'primary'" 
+                      :color="getEventColor(event)" 
                       size="small" 
                       class="mr-1"
                     >
@@ -343,7 +354,7 @@
                   </v-chip>
                   <v-chip
                     size="small"
-                    color="primary"
+                    color="info"
                     variant="outlined"
                     prepend-icon="mdi-bank-transfer"
                   >
@@ -351,7 +362,7 @@
                   </v-chip>
                   <v-chip
                     size="small"
-                    color="info"
+                    color="primary"
                     variant="outlined"
                     prepend-icon="mdi-bucket"
                   >
@@ -476,9 +487,6 @@
               </template>
               
               <template v-slot:item.actions="{ item }">
-                <v-btn icon small @click="viewTransaction(item)">
-                  <v-icon>mdi-eye</v-icon>
-                </v-btn>
                 <v-btn icon small @click="editTransaction(item)" v-if="item.status === 'pending'">
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
@@ -567,6 +575,8 @@
                 <v-select
                   v-model="newTransaction.bucketId"
                   :items="bucketItems"
+                  item-title="text"
+                  item-value="value"
                   label="Target Bucket"
                   :rules="[v => !!v || 'Bucket is required for allocation']"
                 ></v-select>
@@ -666,13 +676,16 @@
                 ></v-slider>
               </v-col>
               
-              <v-col cols="12" md="6">
-                <v-color-picker
-                  v-model="newBucket.color"
-                  hide-inputs
-                  mode="hexa"
-                  class="ma-2"
-                ></v-color-picker>
+              <v-col cols="12">
+                <div class="bucket-color-picker-wrap">
+                  <v-color-picker
+                    v-model="newBucket.color"
+                    hide-inputs
+                    mode="hexa"
+                    width="280"
+                    class="bucket-color-picker"
+                  ></v-color-picker>
+                </div>
               </v-col>
             </v-row>
           </v-form>
@@ -688,6 +701,69 @@
           >
             Create Bucket
           </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Bucket Details Dialog -->
+    <v-dialog v-model="showBucketDetailsDialog" max-width="600px">
+      <v-card v-if="selectedBucket">
+        <v-card-title>
+          <v-icon class="mr-2">mdi-information-outline</v-icon>
+          Bucket Details
+        </v-card-title>
+        <v-card-text>
+          <div class="d-flex align-center mb-4">
+            <v-avatar :color="selectedBucket.color || 'primary'" size="40" class="mr-3">
+              <v-icon dark>{{ selectedBucket.icon || 'mdi-bucket' }}</v-icon>
+            </v-avatar>
+            <div>
+              <h3 class="text-h6 mb-0">{{ selectedBucket.name }}</h3>
+              <p class="text-caption mb-0 text-grey">
+                {{ selectedBucket.type?.toUpperCase() || 'N/A' }}
+              </p>
+            </div>
+          </div>
+
+          <v-row>
+            <v-col cols="6">
+              <div class="text-caption text-grey">Current Amount</div>
+              <div class="text-h6">${{ (selectedBucket.currentAmount || 0).toLocaleString() }}</div>
+            </v-col>
+            <v-col cols="6">
+              <div class="text-caption text-grey">Target Amount</div>
+              <div class="text-h6">${{ (selectedBucket.targetAmount || 0).toLocaleString() }}</div>
+            </v-col>
+            <v-col cols="12">
+              <div class="d-flex justify-space-between text-body-2 mb-1">
+                <span>Progress</span>
+                <span>{{ Math.round(selectedBucket.progress?.percentComplete || 0) }}%</span>
+              </div>
+              <v-progress-linear
+                :value="selectedBucket.progress?.percentComplete || 0"
+                height="8"
+                :color="selectedBucket.progress?.percentComplete >= 100 ? 'success' : 'primary'"
+              ></v-progress-linear>
+            </v-col>
+            <v-col cols="6">
+              <div class="text-caption text-grey">Priority</div>
+              <div class="text-body-1">{{ selectedBucket.priority || 'N/A' }}</div>
+            </v-col>
+            <v-col cols="6">
+              <div class="text-caption text-grey">Target Date</div>
+              <div class="text-body-1">
+                {{ selectedBucket.targetDate ? new Date(selectedBucket.targetDate).toLocaleDateString() : 'Not set' }}
+              </div>
+            </v-col>
+            <v-col cols="12">
+              <div class="text-caption text-grey">Description</div>
+              <div class="text-body-1">{{ selectedBucket.description || 'No description provided.' }}</div>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="closeBucketDetails">Close</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -712,6 +788,7 @@ export default {
       showAddTransactionDialog: false,
       showCreateBucketDialog: false,
       showAllocateFundsDialog: false,
+      showBucketDetailsDialog: false,
       
       // Form validation
       transactionFormValid: false,
@@ -733,6 +810,7 @@ export default {
       calendarEvents: [],
       selectedDate: null,
       selectedDateSummary: null,
+      selectedBucket: null,
       
       // Form data
       newTransaction: {
@@ -1195,10 +1273,15 @@ export default {
       }
       this.$refs.bucketForm?.resetValidation()
     },
-    
-    viewTransaction(transaction) {
-      // TODO: Implement transaction detail view
-      console.log('View transaction:', transaction)
+
+    openBucketDetails(bucket) {
+      this.selectedBucket = bucket
+      this.showBucketDetailsDialog = true
+    },
+
+    closeBucketDetails() {
+      this.showBucketDetailsDialog = false
+      this.selectedBucket = null
     },
     
     editTransaction(transaction) {
@@ -1236,24 +1319,71 @@ export default {
       }
       return icons[type] || 'mdi-cash'
     },
+
+    resolveCalendarEventData(payload) {
+      if (!payload) return null
+
+      if (payload.event && typeof payload.event === 'object') {
+        return payload.event
+      }
+
+      if (payload.input && typeof payload.input === 'object') {
+        return payload.input
+      }
+
+      if (payload.details && typeof payload.details === 'object') {
+        return payload.details
+      }
+
+      return null
+    },
+
+    resolveCalendarDate(payload, fallbackEventData = null) {
+      if (!payload) return fallbackEventData?.start || null
+
+      if (typeof payload === 'string') return payload
+      if (payload instanceof Date) return payload
+
+      return payload.date || payload.day?.date || payload.day || payload.start || fallbackEventData?.start || null
+    },
     
-    showEventDetails(event) {
-      const eventData = event.event
-      this.selectedDate = event.date
-      this.calculateSelectedDateSummary(event.date)
-      
-      // Show event details (could be expanded to show a dialog)
-      console.log('Event details:', eventData)
+    showEventDetails(nativeEvent, calendarPayload) {
+      const payload = calendarPayload || nativeEvent
+      const eventData = this.resolveCalendarEventData(payload)
+      const selectedDate = this.resolveCalendarDate(payload, eventData)
+      this.selectedDate = selectedDate
+      this.calculateSelectedDateSummary(selectedDate)
+
+      if (!eventData) {
+        this.$emit('show-snackbar', {
+          message: 'Unable to load event details',
+          color: 'warning',
+          timeout: 2500
+        })
+        return
+      }
+
+      const eventName = eventData.name || 'Calendar event'
+      const eventType = eventData.type || ''
+      const eventAmount = Number(eventData.amount || 0)
+      const sign = eventType === 'income' ? '+' : eventType === 'expense' ? '-' : ''
+
       this.$emit('show-snackbar', {
-        message: `${eventData.name}: ${eventData.type === 'income' ? '+' : eventData.type === 'expense' ? '-' : ''}$${eventData.amount}`,
+        message: `${eventName}: ${sign}$${Math.abs(eventAmount).toLocaleString()}`,
         color: this.getEventColor(eventData),
         timeout: 3000
       })
     },
     
     addEventForDate(date) {
-      this.selectedDate = date.date
-      this.calculateSelectedDateSummary(date.date)
+      const selectedDate = this.resolveCalendarDate(date)
+      this.selectedDate = selectedDate
+      this.calculateSelectedDateSummary(selectedDate)
+      const transactionDate = typeof selectedDate === 'string'
+        ? selectedDate.split('T')[0]
+        : selectedDate instanceof Date
+          ? selectedDate.toISOString().split('T')[0]
+          : new Date().toISOString().substr(0, 10)
       
       // Pre-fill transaction form with selected date
       this.newTransaction = {
@@ -1263,13 +1393,31 @@ export default {
         category: '',
         bucketId: null,
         notes: '',
-        transactionDate: date.date
+        transactionDate
       }
       this.showAddTransactionDialog = true
     },
     
     calculateSelectedDateSummary(date) {
-      const dateString = typeof date === 'string' ? date : date.toISOString().split('T')[0]
+      if (!date) {
+        this.selectedDateSummary = null
+        return
+      }
+
+      let dateString = ''
+      if (typeof date === 'string') {
+        dateString = date.includes('T') ? date.split('T')[0] : date
+      } else if (date instanceof Date) {
+        dateString = date.toISOString().split('T')[0]
+      } else if (typeof date === 'object' && date.date) {
+        dateString = String(date.date).split('T')[0]
+      } else if (typeof date === 'object' && date.start) {
+        dateString = String(date.start).split('T')[0]
+      } else {
+        this.selectedDateSummary = null
+        return
+      }
+
       const dayEvents = this.calendarEvents.filter(event => event.start === dateString)
       
       let income = 0
@@ -1278,14 +1426,17 @@ export default {
       let allocations = 0
       
       dayEvents.forEach(event => {
-        if (event.type === 'income') {
-          income += event.amount
-        } else if (event.type === 'expense') {
-          expenses += event.amount
-        } else if (event.type === 'transfer') {
-          transfers += event.amount
-        } else if (event.type === 'allocation') {
-          allocations += event.amount
+        const eventType = String(event.type || '').toLowerCase()
+        const amount = Number(event.amount || 0)
+
+        if (eventType === 'income') {
+          income += amount
+        } else if (eventType === 'expense') {
+          expenses += amount
+        } else if (eventType === 'transfer') {
+          transfers += amount
+        } else if (eventType === 'allocation') {
+          allocations += amount
         }
       })
       
@@ -1365,11 +1516,11 @@ export default {
 </script>
 
 <style scoped>
-.v-card {
-  transition: all 0.3s ease;
+.bucket-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.v-card:hover {
+.bucket-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
@@ -1380,5 +1531,15 @@ export default {
 
 .v-progress-linear {
   border-radius: 4px;
+}
+
+.bucket-color-picker-wrap {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.bucket-color-picker {
+  max-width: 100%;
 }
 </style>
