@@ -1,3 +1,4 @@
+import '../config/env';
 import { RentalService } from '../services/rental.service';
 import { UserService } from '../services/user.service';
 import { BucketService } from '../services/bucket.service';
@@ -8,25 +9,39 @@ import { IUserRepository } from '../repositories/user.repository.interface';
 import { IBucketRepository } from '../repositories/bucket.repository.interface';
 import { ICashFlowRepository } from '../repositories/cashflow.repository.interface';
 import { IRenterRepository } from '../repositories/renter.repository.interface';
-import { BucketRepository } from '../repositories/bucket.repository';
-import { CashFlowRepository } from '../repositories/cashflow.repository';
-import { RenterRepository } from '../repositories/renter.repository';
 import { DatabaseFactory, DatabaseConfig, IRepositoryFactory } from '../config/database.config';
 
 // Simple dependency injection container
 class Container {
-  private services: Map<string, any> = new Map();
+  private registrations: Map<string, { factory: () => unknown; singleton: boolean }> = new Map();
+  private instances: Map<string, unknown> = new Map();
 
-  register<T>(name: string, factory: () => T): void {
-    this.services.set(name, factory);
+  register<T>(name: string, factory: () => T, singleton = true): void {
+    this.registrations.set(name, { factory, singleton });
   }
 
   get<T>(name: string): T {
-    const factory = this.services.get(name);
-    if (!factory) {
+    if (this.instances.has(name)) {
+      return this.instances.get(name) as T;
+    }
+
+    const registration = this.registrations.get(name);
+    if (!registration) {
       throw new Error(`Service ${name} not found`);
     }
-    return factory();
+
+    const instance = registration.factory() as T;
+
+    if (registration.singleton) {
+      this.instances.set(name, instance);
+    }
+
+    return instance;
+  }
+
+  clear(): void {
+    this.registrations.clear();
+    this.instances.clear();
   }
 }
 
@@ -35,62 +50,93 @@ export const container = new Container();
 
 // Database configuration - easily changeable
 const databaseConfig: DatabaseConfig = {
-  type: 'memory' // Change to 'mongodb', 'postgresql', or 'mysql' when available
+  type: (process.env.DB_TYPE as DatabaseConfig['type']) || 'memory',
+  storeRootPath: process.env.STORE_ROOT_PATH,
 };
 
 // Create repository factory based on configuration
 const repositoryFactory: IRepositoryFactory = DatabaseFactory.create(databaseConfig);
 
-// Register repositories using the factory
-container.register<IRentalRepository>('RentalRepository', () => 
-  repositoryFactory.createRentalRepository()
-);
+let initialized = false;
 
-container.register<IUserRepository>('UserRepository', () => 
-  repositoryFactory.createUserRepository()
-);
+const registerDependencies = () => {
+  container.clear();
 
-// Register new repositories directly (until we update the factory)
-container.register<IBucketRepository>('BucketRepository', () => 
-  new BucketRepository()
-);
+  // Register repositories using the selected backend factory
+  container.register<IRentalRepository>('RentalRepository', () =>
+    repositoryFactory.createRentalRepository()
+  );
 
-container.register<ICashFlowRepository>('CashFlowRepository', () => 
-  new CashFlowRepository()
-);
+  container.register<IUserRepository>('UserRepository', () =>
+    repositoryFactory.createUserRepository()
+  );
 
-container.register<IRenterRepository>('RenterRepository', () => 
-  new RenterRepository()
-);
+  container.register<IBucketRepository>('BucketRepository', () =>
+    repositoryFactory.createBucketRepository()
+  );
 
-// Register services
-container.register<RentalService>('RentalService', () => 
-  new RentalService(container.get<IRentalRepository>('RentalRepository'))
-);
+  container.register<ICashFlowRepository>('CashFlowRepository', () =>
+    repositoryFactory.createCashFlowRepository()
+  );
 
-container.register<UserService>('UserService', () => 
-  new UserService(container.get<IUserRepository>('UserRepository'))
-);
+  container.register<IRenterRepository>('RenterRepository', () =>
+    repositoryFactory.createRenterRepository()
+  );
 
-container.register<BucketService>('BucketService', () => 
-  new BucketService(
-    container.get<IBucketRepository>('BucketRepository'),
-    container.get<ICashFlowRepository>('CashFlowRepository')
-  )
-);
+  // Register services
+  container.register<RentalService>('RentalService', () =>
+    new RentalService(container.get<IRentalRepository>('RentalRepository'))
+  );
 
-container.register<CashFlowService>('CashFlowService', () => 
-  new CashFlowService(
-    container.get<ICashFlowRepository>('CashFlowRepository'),
-    container.get<IBucketRepository>('BucketRepository')
-  )
-);
+  container.register<UserService>('UserService', () =>
+    new UserService(container.get<IUserRepository>('UserRepository'))
+  );
 
-container.register<RenterService>('RenterService', () => 
-  new RenterService(
-    container.get<IRenterRepository>('RenterRepository'),
-    container.get<IRentalRepository>('RentalRepository')
-  )
-);
+  container.register<BucketService>('BucketService', () =>
+    new BucketService(
+      container.get<IBucketRepository>('BucketRepository'),
+      container.get<ICashFlowRepository>('CashFlowRepository')
+    )
+  );
+
+  container.register<CashFlowService>('CashFlowService', () =>
+    new CashFlowService(
+      container.get<ICashFlowRepository>('CashFlowRepository'),
+      container.get<IBucketRepository>('BucketRepository')
+    )
+  );
+
+  container.register<RenterService>('RenterService', () =>
+    new RenterService(
+      container.get<IRenterRepository>('RenterRepository'),
+      container.get<IRentalRepository>('RentalRepository')
+    )
+  );
+};
+
+export const initializeContainer = async (): Promise<void> => {
+  if (initialized) {
+    return;
+  }
+
+  if (repositoryFactory.initialize) {
+    await repositoryFactory.initialize();
+  }
+
+  registerDependencies();
+  initialized = true;
+};
+
+export const closeContainer = async (): Promise<void> => {
+  if (!initialized) {
+    return;
+  }
+
+  if (repositoryFactory.close) {
+    await repositoryFactory.close();
+  }
+
+  initialized = false;
+};
 
 export default container;

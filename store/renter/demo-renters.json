@@ -1,0 +1,130 @@
+[
+  {
+    "id": "renter-001",
+    "firstName": "Alice",
+    "lastName": "Johnson",
+    "dateOfBirth": "1990-05-15T00:00:00.000Z",
+    "email": "alice.johnson@example.com",
+    "phoneNumber": "+1-555-0125",
+    "currentAddress": {
+      "street": "456 Oak Street",
+      "city": "Current City",
+      "state": "CA",
+      "zipCode": "90210",
+      "country": "USA"
+    },
+    "status": "prospective",
+    "applicationStatus": "pending",
+    "applicationDate": "2026-07-04T00:00:00.000Z",
+    "totalMonthlyIncome": 4500,
+    "currentEmployment": {
+      "employerName": "Tech Corp",
+      "position": "Software Developer",
+      "type": "full-time",
+      "monthlyIncome": 4500,
+      "startDate": "2022-01-15T00:00:00.000Z",
+      "isCurrentJob": true
+    },
+    "emergencyContacts": [
+      {
+        "name": "Bob Johnson",
+        "relationship": "Brother",
+        "phoneNumber": "+1-555-0126"
+      }
+    ],
+    "references": [
+      {
+        "name": "Previous Landlord",
+        "relationship": "previous_landlord",
+        "phoneNumber": "+1-555-0127",
+        "email": "landlord@example.com",
+        "yearsKnown": 2
+      }
+    ],
+    "rentalHistory": [
+      {
+        "address": "123 Previous St",
+        "landlordName": "Previous Landlord",
+        "landlordPhone": "+1-555-0127",
+        "startDate": "2020-01-01T00:00:00.000Z",
+        "endDate": "2022-12-31T00:00:00.000Z",
+        "monthlyRent": 1000,
+        "reference": "positive"
+      }
+    ],
+    "creditInfo": {
+      "creditScore": 720,
+      "creditScoreDate": "2026-07-04T00:00:00.000Z",
+      "hasDeclarations": false,
+      "bankruptcyHistory": false,
+      "evictionHistory": false,
+      "criminalBackground": false
+    },
+    "preferences": {
+      "maxRent": 1500,
+      "preferredMoveInDate": "2026-08-03T00:00:00.000Z",
+      "leaseDuration": 12,
+      "petOwner": false,
+      "smokingStatus": "non-smoker"
+    },
+    "preferredContactMethod": "email"
+  },
+  {
+    "id": "renter-002",
+    "firstName": "Bob",
+    "lastName": "Smith",
+    "dateOfBirth": "1985-08-22T00:00:00.000Z",
+    "email": "bob.smith@example.com",
+    "phoneNumber": "+1-555-0128",
+    "currentAddress": {
+      "street": "123 Main St",
+      "city": "Downtown",
+      "state": "CA",
+      "zipCode": "90210",
+      "country": "USA"
+    },
+    "status": "current",
+    "applicationStatus": "approved",
+    "applicationDate": "2023-01-15T00:00:00.000Z",
+    "moveInDate": "2023-02-01T00:00:00.000Z",
+    "leaseStartDate": "2023-02-01T00:00:00.000Z",
+    "leaseEndDate": "2024-02-01T00:00:00.000Z",
+    "monthlyRent": 1200,
+    "securityDeposit": 2400,
+    "totalMonthlyIncome": 5200,
+    "currentEmployment": {
+      "employerName": "Finance Inc",
+      "position": "Accountant",
+      "type": "full-time",
+      "monthlyIncome": 5200,
+      "startDate": "2020-03-01T00:00:00.000Z",
+      "isCurrentJob": true
+    },
+    "emergencyContacts": [
+      {
+        "name": "Sarah Smith",
+        "relationship": "Spouse",
+        "phoneNumber": "+1-555-0129"
+      }
+    ],
+    "references": [
+      {
+        "name": "HR Department",
+        "relationship": "employer",
+        "phoneNumber": "+1-555-0130",
+        "email": "hr@financeinc.com",
+        "yearsKnown": 3
+      }
+    ],
+    "rentalHistory": [],
+    "creditInfo": {
+      "creditScore": 780,
+      "creditScoreDate": "2026-07-04T00:00:00.000Z",
+      "hasDeclarations": false,
+      "bankruptcyHistory": false,
+      "evictionHistory": false,
+      "criminalBackground": false
+    },
+    "preferredContactMethod": "phone"
+  }
+]

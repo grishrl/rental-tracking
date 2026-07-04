@@ -1,0 +1,29 @@
+[
+  {
+    "id": "user-landlord-001",
+    "email": "landlord@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "landlord",
+    "isActive": true,
+    "phoneNumber": "+1-555-0123"
+  },
+  {
+    "id": "user-tenant-001",
+    "email": "tenant@example.com",
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "role": "tenant",
+    "isActive": true,
+    "phoneNumber": "+1-555-0124"
+  },
+  {
+    "id": "mock-user-id",
+    "email": "mock.user@example.com",
+    "firstName": "Mock",
+    "lastName": "User",
+    "role": "landlord",
+    "isActive": true,
+    "phoneNumber": "+1-555-0199"
+  }
+]

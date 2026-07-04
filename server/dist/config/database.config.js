@@ -1,8 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseFactory = exports.InMemoryRepositoryFactory = void 0;
+exports.DatabaseFactory = exports.FileRepositoryFactory = exports.InMemoryRepositoryFactory = void 0;
 const rental_repository_1 = require("../repositories/rental.repository");
 const user_repository_1 = require("../repositories/user.repository");
+const renter_repository_1 = require("../repositories/renter.repository");
+const bucket_repository_1 = require("../repositories/bucket.repository");
+const cashflow_repository_1 = require("../repositories/cashflow.repository");
+const file_1 = require("../stores/file");
+const file_2 = require("../repositories/file");
 // In-memory repository factory (current implementation)
 class InMemoryRepositoryFactory {
     createRentalRepository() {
@@ -11,14 +16,69 @@ class InMemoryRepositoryFactory {
     createUserRepository() {
         return new user_repository_1.UserRepository();
     }
+    createRenterRepository() {
+        return new renter_repository_1.RenterRepository();
+    }
+    createBucketRepository() {
+        return new bucket_repository_1.BucketRepository();
+    }
+    createCashFlowRepository() {
+        return new cashflow_repository_1.CashFlowRepository();
+    }
 }
 exports.InMemoryRepositoryFactory = InMemoryRepositoryFactory;
+class FileRepositoryFactory {
+    constructor(config) {
+        this.storeRegistry = new file_1.FileStoreRegistry({
+            storeRootPath: config.storeRootPath,
+        });
+    }
+    async initialize() {
+        await this.storeRegistry.initialize();
+    }
+    async close() {
+        await this.storeRegistry.close();
+    }
+    createRentalRepository() {
+        if (!this.rentalRepository) {
+            this.rentalRepository = new file_2.RentalFileRepository(this.storeRegistry.rentals);
+        }
+        return this.rentalRepository;
+    }
+    createUserRepository() {
+        if (!this.userRepository) {
+            this.userRepository = new file_2.UserFileRepository(this.storeRegistry.users);
+        }
+        return this.userRepository;
+    }
+    createRenterRepository() {
+        if (!this.renterRepository) {
+            this.renterRepository = new file_2.RenterFileRepository(this.storeRegistry.renters);
+        }
+        return this.renterRepository;
+    }
+    createBucketRepository() {
+        if (!this.bucketRepository) {
+            this.bucketRepository = new file_2.BucketFileRepository(this.storeRegistry.buckets);
+        }
+        return this.bucketRepository;
+    }
+    createCashFlowRepository() {
+        if (!this.cashFlowRepository) {
+            this.cashFlowRepository = new file_2.CashFlowFileRepository(this.storeRegistry.cashflows);
+        }
+        return this.cashFlowRepository;
+    }
+}
+exports.FileRepositoryFactory = FileRepositoryFactory;
 // Database factory that returns the appropriate repository factory
 class DatabaseFactory {
     static create(config) {
         switch (config.type) {
             case 'memory':
                 return new InMemoryRepositoryFactory();
+            case 'file':
+                return new FileRepositoryFactory(config);
             case 'mongodb':
                 // Would create MongoDB repository factory
                 throw new Error('MongoDB implementation not available. Install mongodb package and implement MongoRepositoryFactory');

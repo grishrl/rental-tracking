@@ -1,0 +1,77 @@
+[
+  {
+    "id": "rental-001",
+    "title": "Cozy Downtown Apartment",
+    "description": "Beautiful 2-bedroom apartment in the heart of the city with modern amenities and great views.",
+    "price": 1200,
+    "location": "Downtown",
+    "address": "123 Main St, Downtown",
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "squareFootage": 850,
+    "amenities": ["WiFi", "Air Conditioning", "Parking", "Gym"],
+    "images": ["https://via.placeholder.com/300x200"],
+    "ownerId": "user-landlord-001",
+    "isAvailable": true,
+    "availableFrom": "2026-07-04T00:00:00.000Z",
+    "leaseDuration": 12,
+    "petPolicy": "deposit-required",
+    "utilities": {
+      "electricity": true,
+      "water": true,
+      "gas": false,
+      "internet": true,
+      "cable": false
+    }
+  },
+  {
+    "id": "rental-002",
+    "title": "Suburban Family Home",
+    "description": "Spacious 3-bedroom house with garden, perfect for families.",
+    "price": 1800,
+    "location": "Suburbs",
+    "address": "456 Oak Ave, Suburbia",
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "squareFootage": 1200,
+    "amenities": ["Garden", "Garage", "Fireplace", "Laundry"],
+    "images": ["https://via.placeholder.com/300x200"],
+    "ownerId": "user-landlord-001",
+    "isAvailable": true,
+    "availableFrom": "2026-07-04T00:00:00.000Z",
+    "leaseDuration": 12,
+    "petPolicy": "allowed",
+    "utilities": {
+      "electricity": true,
+      "water": true,
+      "gas": true,
+      "internet": false,
+      "cable": false
+    }
+  },
+  {
+    "id": "rental-003",
+    "title": "Modern Studio Loft",
+    "description": "Contemporary studio with city views and modern appliances.",
+    "price": 900,
+    "location": "City Center",
+    "address": "789 High St, City Center",
+    "bedrooms": 0,
+    "bathrooms": 1,
+    "squareFootage": 500,
+    "amenities": ["City View", "Modern Kitchen", "WiFi", "Security"],
+    "images": ["https://via.placeholder.com/300x200"],
+    "ownerId": "user-landlord-001",
+    "isAvailable": true,
+    "availableFrom": "2026-07-04T00:00:00.000Z",
+    "leaseDuration": 6,
+    "petPolicy": "not-allowed",
+    "utilities": {
+      "electricity": true,
+      "water": true,
+      "gas": false,
+      "internet": true,
+      "cable": true
+    }
+  }
+]

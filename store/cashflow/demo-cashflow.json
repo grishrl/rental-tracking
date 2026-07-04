@@ -1,0 +1,90 @@
+{
+  "summary": {
+    "totalIncome": 12500,
+    "totalExpenses": 8750,
+    "netCashFlow": 3750,
+    "pendingTransactions": 3
+  },
+  "transactions": [
+    {
+      "id": "1",
+      "description": "Monthly Salary",
+      "amount": 5000,
+      "type": "income",
+      "category": "salary",
+      "status": "completed",
+      "transactionDate": "2026-07-04T00:00:00.000Z",
+      "bucketId": null
+    },
+    {
+      "id": "2",
+      "description": "Grocery Shopping",
+      "amount": 150,
+      "type": "expense",
+      "category": "groceries",
+      "status": "completed",
+      "transactionDate": "2026-07-03T00:00:00.000Z",
+      "bucketId": null
+    },
+    {
+      "id": "3",
+      "description": "Emergency Fund Allocation",
+      "amount": 500,
+      "type": "allocation",
+      "category": "other_income",
+      "status": "pending",
+      "transactionDate": "2026-07-06T00:00:00.000Z",
+      "bucketId": "1"
+    },
+    {
+      "id": "4",
+      "description": "Rent Payment",
+      "amount": 1200,
+      "type": "expense",
+      "category": "rent",
+      "status": "completed",
+      "transactionDate": "2026-07-01T00:00:00.000Z",
+      "bucketId": null
+    },
+    {
+      "id": "5",
+      "description": "Freelance Project",
+      "amount": 800,
+      "type": "income",
+      "category": "business",
+      "status": "completed",
+      "transactionDate": "2026-06-29T00:00:00.000Z",
+      "bucketId": null
+    },
+    {
+      "id": "6",
+      "description": "Vacation Fund Transfer",
+      "amount": 300,
+      "type": "allocation",
+      "category": "other_income",
+      "status": "pending",
+      "transactionDate": "2026-07-11T00:00:00.000Z",
+      "bucketId": "2"
+    },
+    {
+      "id": "7",
+      "description": "Utility Bills",
+      "amount": 180,
+      "type": "expense",
+      "category": "utilities",
+      "status": "completed",
+      "transactionDate": "2026-07-02T00:00:00.000Z",
+      "bucketId": null
+    },
+    {
+      "id": "8",
+      "description": "Investment Dividend",
+      "amount": 250,
+      "type": "income",
+      "category": "investment",
+      "status": "completed",
+      "transactionDate": "2026-06-27T00:00:00.000Z",
+      "bucketId": null
+    }
+  ]
+}

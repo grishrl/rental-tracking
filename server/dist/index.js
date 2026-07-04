@@ -5,18 +5,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const container_1 = require("./container/container");
-dotenv_1.default.config();
+const domain_routes_1 = require("./routes/domain.routes");
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 // Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
-// Get services from container
-const rentalService = container_1.container.get('RentalService');
-const userService = container_1.container.get('UserService');
-const renterService = container_1.container.get('RenterService');
+let rentalService;
+let userService;
+let renterService;
+let bucketService;
+let cashFlowService;
 // Seed some sample data
 const seedData = async () => {
     try {
@@ -247,299 +247,36 @@ const seedData = async () => {
 app.get('/api/health', (req, res) => {
     res.json({ status: 'Server is running!', timestamp: new Date().toISOString() });
 });
-// Rental routes
-app.get('/api/rentals', async (req, res) => {
-    try {
-        const { location, minPrice, maxPrice, bedrooms, bathrooms, amenities } = req.query;
-        let rentals;
-        if (location || minPrice || maxPrice || bedrooms || bathrooms || amenities) {
-            // Search with filters
-            const searchParams = {};
-            if (location)
-                searchParams.location = location;
-            if (minPrice)
-                searchParams.minPrice = parseInt(minPrice);
-            if (maxPrice)
-                searchParams.maxPrice = parseInt(maxPrice);
-            if (bedrooms)
-                searchParams.bedrooms = parseInt(bedrooms);
-            if (bathrooms)
-                searchParams.bathrooms = parseInt(bathrooms);
-            if (amenities) {
-                searchParams.amenities = Array.isArray(amenities)
-                    ? amenities
-                    : [amenities];
-            }
-            rentals = await rentalService.searchRentals(searchParams);
-        }
-        else {
-            // Get all available rentals
-            rentals = await rentalService.getAvailableRentals();
-        }
-        res.json(rentals);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch rentals' });
-    }
-});
-app.get('/api/rentals/:id', async (req, res) => {
-    try {
-        const rental = await rentalService.getRentalById(req.params.id);
-        if (!rental) {
-            return res.status(404).json({ error: 'Rental not found' });
-        }
-        res.json(rental);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch rental' });
-    }
-});
-app.post('/api/rentals', async (req, res) => {
-    try {
-        const rental = await rentalService.createRental(req.body);
-        res.status(201).json(rental);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.put('/api/rentals/:id', async (req, res) => {
-    try {
-        const rental = await rentalService.updateRental(req.params.id, req.body);
-        if (!rental) {
-            return res.status(404).json({ error: 'Rental not found' });
-        }
-        res.json(rental);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.delete('/api/rentals/:id', async (req, res) => {
-    try {
-        const deleted = await rentalService.deleteRental(req.params.id);
-        if (!deleted) {
-            return res.status(404).json({ error: 'Rental not found' });
-        }
-        res.status(204).send();
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-// User routes
-app.get('/api/users', async (req, res) => {
-    try {
-        const users = await userService.getAllUsers();
-        res.json(users);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch users' });
-    }
-});
-app.get('/api/users/:id', async (req, res) => {
-    try {
-        const user = await userService.getUserById(req.params.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.json(user);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch user' });
-    }
-});
-app.post('/api/users', async (req, res) => {
-    try {
-        const user = await userService.createUser(req.body);
-        res.status(201).json(user);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-// Renter routes
-app.get('/api/renters', async (req, res) => {
-    try {
-        const { status, applicationStatus, name, email, phoneNumber, rentalId } = req.query;
-        if (status || applicationStatus || name || email || phoneNumber || rentalId) {
-            // Search with filters
-            const searchParams = {};
-            if (status)
-                searchParams.status = status;
-            if (applicationStatus)
-                searchParams.applicationStatus = applicationStatus;
-            if (name)
-                searchParams.name = name;
-            if (email)
-                searchParams.email = email;
-            if (phoneNumber)
-                searchParams.phoneNumber = phoneNumber;
-            if (rentalId)
-                searchParams.rentalId = rentalId;
-            const renters = await renterService.searchRenters(searchParams);
-            res.json(renters);
-        }
-        else {
-            const renters = await renterService.getAllRenters();
-            res.json(renters);
-        }
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch renters' });
-    }
-});
-app.get('/api/renters/summary', async (req, res) => {
-    try {
-        const summary = await renterService.getRenterSummary();
-        res.json(summary);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch renter summary' });
-    }
-});
-app.get('/api/renters/current', async (req, res) => {
-    try {
-        const renters = await renterService.getCurrentRenters();
-        res.json(renters);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch current renters' });
-    }
-});
-app.get('/api/renters/prospective', async (req, res) => {
-    try {
-        const renters = await renterService.getProspectiveRenters();
-        res.json(renters);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch prospective renters' });
-    }
-});
-app.get('/api/renters/leases-expiring', async (req, res) => {
-    try {
-        const days = parseInt(req.query.days) || 30;
-        const renters = await renterService.getLeasesExpiring(days);
-        res.json(renters);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch renters with expiring leases' });
-    }
-});
-app.get('/api/renters/follow-up', async (req, res) => {
-    try {
-        const renters = await renterService.getRentersRequiringFollowUp();
-        res.json(renters);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch renters requiring follow-up' });
-    }
-});
-app.get('/api/renters/:id', async (req, res) => {
-    try {
-        const renter = await renterService.getRenterById(req.params.id);
-        if (!renter) {
-            return res.status(404).json({ error: 'Renter not found' });
-        }
-        res.json(renter);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Failed to fetch renter' });
-    }
-});
-app.post('/api/renters', async (req, res) => {
-    try {
-        const renter = await renterService.createRenter(req.body);
-        res.status(201).json(renter);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.put('/api/renters/:id', async (req, res) => {
-    try {
-        const renter = await renterService.updateRenter(req.params.id, req.body);
-        if (!renter) {
-            return res.status(404).json({ error: 'Renter not found' });
-        }
-        res.json(renter);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.delete('/api/renters/:id', async (req, res) => {
-    try {
-        const deleted = await renterService.deleteRenter(req.params.id);
-        if (!deleted) {
-            return res.status(404).json({ error: 'Renter not found' });
-        }
-        res.status(204).send();
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.post('/api/renters/:id/assign-rental', async (req, res) => {
-    try {
-        const { rentalId, startDate, endDate, monthlyRent, securityDeposit } = req.body;
-        const result = await renterService.assignRenterToRental(req.params.id, rentalId, {
-            startDate: new Date(startDate),
-            endDate: new Date(endDate),
-            monthlyRent,
-            securityDeposit
-        });
-        res.json(result);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.post('/api/renters/:id/end-lease', async (req, res) => {
-    try {
-        const { moveOutDate } = req.body;
-        const result = await renterService.endLease(req.params.id, new Date(moveOutDate));
-        res.json(result);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.post('/api/renters/:id/process-application', async (req, res) => {
-    try {
-        const { decision, notes } = req.body;
-        const renter = await renterService.processApplication(req.params.id, decision, notes);
-        res.json(renter);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.get('/api/renters/:id/evaluate-application', async (req, res) => {
-    try {
-        const minIncomeRatio = parseFloat(req.query.minIncomeRatio) || 3;
-        const evaluation = await renterService.evaluateApplication(req.params.id, minIncomeRatio);
-        res.json(evaluation);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-app.post('/api/renters/:id/communication', async (req, res) => {
-    try {
-        const renter = await renterService.addCommunicationRecord(req.params.id, req.body);
-        res.json(renter);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
 // Initialize and start server
 const startServer = async () => {
+    await (0, container_1.initializeContainer)();
+    rentalService = container_1.container.get('RentalService');
+    userService = container_1.container.get('UserService');
+    renterService = container_1.container.get('RenterService');
+    bucketService = container_1.container.get('BucketService');
+    cashFlowService = container_1.container.get('CashFlowService');
+    app.use('/api', (0, domain_routes_1.createDomainRouter)({
+        userService,
+        rentalService,
+        renterService,
+        bucketService,
+        cashFlowService,
+    }));
     await seedData();
     app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
     });
 };
 startServer();
+const handleShutdown = async (signal) => {
+    console.log(`Received ${signal}. Shutting down...`);
+    await (0, container_1.closeContainer)();
+    process.exit(0);
+};
+process.on('SIGINT', () => {
+    void handleShutdown('SIGINT');
+});
+process.on('SIGTERM', () => {
+    void handleShutdown('SIGTERM');
+});
 //# sourceMappingURL=index.js.map

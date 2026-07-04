@@ -1,10 +1,24 @@
 import { IRentalRepository } from '../repositories/rental.repository.interface';
 import { IUserRepository } from '../repositories/user.repository.interface';
+import { IRenterRepository } from '../repositories/renter.repository.interface';
+import { IBucketRepository } from '../repositories/bucket.repository.interface';
+import { ICashFlowRepository } from '../repositories/cashflow.repository.interface';
 import { RentalRepository } from '../repositories/rental.repository';
 import { UserRepository } from '../repositories/user.repository';
+import { RenterRepository } from '../repositories/renter.repository';
+import { BucketRepository } from '../repositories/bucket.repository';
+import { CashFlowRepository } from '../repositories/cashflow.repository';
+import { FileStoreRegistry } from '../stores/file';
+import {
+  BucketFileRepository,
+  CashFlowFileRepository,
+  RentalFileRepository,
+  RenterFileRepository,
+  UserFileRepository,
+} from '../repositories/file';
 
 // Database configuration type
-export type DatabaseType = 'memory' | 'mongodb' | 'postgresql' | 'mysql';
+export type DatabaseType = 'memory' | 'file' | 'mongodb' | 'postgresql' | 'mysql';
 
 // Database configuration interface
 export interface DatabaseConfig {
@@ -15,12 +29,18 @@ export interface DatabaseConfig {
   database?: string;
   username?: string;
   password?: string;
+  storeRootPath?: string;
 }
 
 // Repository factory interface
 export interface IRepositoryFactory {
+  initialize?(): Promise<void>;
+  close?(): Promise<void>;
   createRentalRepository(): IRentalRepository;
   createUserRepository(): IUserRepository;
+  createRenterRepository(): IRenterRepository;
+  createBucketRepository(): IBucketRepository;
+  createCashFlowRepository(): ICashFlowRepository;
 }
 
 // In-memory repository factory (current implementation)
@@ -32,6 +52,81 @@ export class InMemoryRepositoryFactory implements IRepositoryFactory {
   createUserRepository(): IUserRepository {
     return new UserRepository();
   }
+
+  createRenterRepository(): IRenterRepository {
+    return new RenterRepository();
+  }
+
+  createBucketRepository(): IBucketRepository {
+    return new BucketRepository();
+  }
+
+  createCashFlowRepository(): ICashFlowRepository {
+    return new CashFlowRepository();
+  }
+}
+
+export class FileRepositoryFactory implements IRepositoryFactory {
+  private readonly storeRegistry: FileStoreRegistry;
+  private userRepository?: IUserRepository;
+  private rentalRepository?: IRentalRepository;
+  private renterRepository?: IRenterRepository;
+  private bucketRepository?: IBucketRepository;
+  private cashFlowRepository?: ICashFlowRepository;
+
+  constructor(config: DatabaseConfig) {
+    this.storeRegistry = new FileStoreRegistry({
+      storeRootPath: config.storeRootPath,
+    });
+  }
+
+  async initialize(): Promise<void> {
+    await this.storeRegistry.initialize();
+  }
+
+  async close(): Promise<void> {
+    await this.storeRegistry.close();
+  }
+
+  createRentalRepository(): IRentalRepository {
+    if (!this.rentalRepository) {
+      this.rentalRepository = new RentalFileRepository(this.storeRegistry.rentals);
+    }
+
+    return this.rentalRepository;
+  }
+
+  createUserRepository(): IUserRepository {
+    if (!this.userRepository) {
+      this.userRepository = new UserFileRepository(this.storeRegistry.users);
+    }
+
+    return this.userRepository;
+  }
+
+  createRenterRepository(): IRenterRepository {
+    if (!this.renterRepository) {
+      this.renterRepository = new RenterFileRepository(this.storeRegistry.renters);
+    }
+
+    return this.renterRepository;
+  }
+
+  createBucketRepository(): IBucketRepository {
+    if (!this.bucketRepository) {
+      this.bucketRepository = new BucketFileRepository(this.storeRegistry.buckets);
+    }
+
+    return this.bucketRepository;
+  }
+
+  createCashFlowRepository(): ICashFlowRepository {
+    if (!this.cashFlowRepository) {
+      this.cashFlowRepository = new CashFlowFileRepository(this.storeRegistry.cashflows);
+    }
+
+    return this.cashFlowRepository;
+  }
 }
 
 // Database factory that returns the appropriate repository factory
@@ -40,6 +135,9 @@ export class DatabaseFactory {
     switch (config.type) {
       case 'memory':
         return new InMemoryRepositoryFactory();
+
+      case 'file':
+        return new FileRepositoryFactory(config);
       
       case 'mongodb':
         // Would create MongoDB repository factory

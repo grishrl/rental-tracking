@@ -1,0 +1,38 @@
+[
+  {
+    "id": "1",
+    "name": "Emergency Fund",
+    "type": "emergency",
+    "currentAmount": 2500,
+    "targetAmount": 10000,
+    "priority": 9,
+    "color": "#F44336",
+    "icon": "mdi-shield-alert",
+    "progress": { "percentComplete": 25 },
+    "targetDate": "2026-10-02T00:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "name": "Vacation Fund",
+    "type": "savings",
+    "currentAmount": 1200,
+    "targetAmount": 5000,
+    "priority": 6,
+    "color": "#4CAF50",
+    "icon": "mdi-airplane",
+    "progress": { "percentComplete": 24 },
+    "targetDate": "2026-12-31T00:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "name": "Car Maintenance",
+    "type": "expense",
+    "currentAmount": 800,
+    "targetAmount": 2000,
+    "priority": 7,
+    "color": "#FF9800",
+    "icon": "mdi-car",
+    "progress": { "percentComplete": 40 },
+    "targetDate": "2026-09-02T00:00:00.000Z"
+  }
+]
