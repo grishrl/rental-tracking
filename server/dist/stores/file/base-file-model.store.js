@@ -53,7 +53,7 @@ class BaseFileModelStore {
             updatedAt: now,
         };
         await this.enqueueWrite(async () => {
-            const records = await this.readRecords();
+            const records = await this.readRecordsDirect();
             records.push(entity);
             await this.writeRecordsDirect(records);
         });
@@ -68,7 +68,7 @@ class BaseFileModelStore {
             updatedAt: now,
         }));
         await this.enqueueWrite(async () => {
-            const records = await this.readRecords();
+            const records = await this.readRecordsDirect();
             records.push(...entities);
             await this.writeRecordsDirect(records);
         });
@@ -77,7 +77,7 @@ class BaseFileModelStore {
     async update(id, input) {
         let updatedRecord = null;
         await this.enqueueWrite(async () => {
-            const records = await this.readRecords();
+            const records = await this.readRecordsDirect();
             const index = records.findIndex((record) => record.id === id);
             if (index < 0) {
                 return;
@@ -97,7 +97,7 @@ class BaseFileModelStore {
     async delete(id) {
         let deleted = false;
         await this.enqueueWrite(async () => {
-            const records = await this.readRecords();
+            const records = await this.readRecordsDirect();
             const filtered = records.filter((record) => record.id !== id);
             if (filtered.length === records.length) {
                 return;
@@ -111,7 +111,7 @@ class BaseFileModelStore {
         let deletedCount = 0;
         const idSet = new Set(ids);
         await this.enqueueWrite(async () => {
-            const records = await this.readRecords();
+            const records = await this.readRecordsDirect();
             const filtered = records.filter((record) => !idSet.has(record.id));
             deletedCount = records.length - filtered.length;
             if (deletedCount > 0) {
@@ -141,6 +141,10 @@ class BaseFileModelStore {
     async readRecords() {
         await this.initialize();
         await this.writeQueue;
+        return this.readRecordsDirect();
+    }
+    async readRecordsDirect() {
+        await this.initialize();
         const rawText = await fs_1.promises.readFile(this.filePath, 'utf8');
         const parsed = JSON.parse(rawText);
         if (!Array.isArray(parsed)) {

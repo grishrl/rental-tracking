@@ -28,10 +28,13 @@ class Renter {
         this.creditInfo = data.creditInfo;
         this.preferences = data.preferences;
         this.currentRentalId = data.currentRentalId;
+        this.interestedRentalId = data.interestedRentalId;
         this.leaseStartDate = data.leaseStartDate;
         this.leaseEndDate = data.leaseEndDate;
         this.monthlyRent = data.monthlyRent;
         this.securityDeposit = data.securityDeposit;
+        this.inquiryMessage = data.inquiryMessage;
+        this.leadSource = data.leadSource;
         this.documents = data.documents || [];
         this.notes = data.notes;
         this.internalNotes = data.internalNotes;
@@ -157,10 +160,13 @@ class Renter {
             creditInfo: this.creditInfo,
             preferences: this.preferences,
             currentRentalId: this.currentRentalId,
+            interestedRentalId: this.interestedRentalId,
             leaseStartDate: this.leaseStartDate,
             leaseEndDate: this.leaseEndDate,
             monthlyRent: this.monthlyRent,
             securityDeposit: this.securityDeposit,
+            inquiryMessage: this.inquiryMessage,
+            leadSource: this.leadSource,
             documents: this.documents,
             notes: this.notes,
             internalNotes: this.internalNotes,

@@ -4,9 +4,12 @@ exports.createDomainRouter = void 0;
 const express_1 = require("express");
 const user_controller_1 = require("../controllers/user.controller");
 const rental_controller_1 = require("../controllers/rental.controller");
+const rental_controller_2 = require("../controllers/rental.controller");
+const rental_controller_3 = require("../controllers/rental.controller");
 const renter_controller_1 = require("../controllers/renter.controller");
 const bucket_controller_1 = require("../controllers/bucket.controller");
 const cashflow_controller_1 = require("../controllers/cashflow.controller");
+const cashflow_controller_2 = require("../controllers/cashflow.controller");
 const createDomainRouter = (services) => {
     const router = (0, express_1.Router)();
     const userController = new user_controller_1.UserController(services.userService);
@@ -21,9 +24,31 @@ const createDomainRouter = (services) => {
     router.put('/users/:id', userController.update);
     router.delete('/users/:id', userController.delete);
     const rentalController = new rental_controller_1.RentalController(services.rentalService);
+    const runRentalPhotoUpload = (req, res, next) => {
+        (0, rental_controller_2.rentalPhotoUpload)(req, res, (error) => {
+            if (error) {
+                res.status(400).json({ error: error.message || 'Invalid rental photo upload' });
+                return;
+            }
+            next();
+        });
+    };
+    const runRentalTenantDocUpload = (req, res, next) => {
+        (0, rental_controller_3.rentalTenantDocUpload)(req, res, (error) => {
+            if (error) {
+                res.status(400).json({ error: error.message || 'Invalid rental tenant document upload' });
+                return;
+            }
+            next();
+        });
+    };
     router.get('/rental/getAll', rentalController.getAll);
     router.get('/rental/get/:id', rentalController.get);
     router.post('/rental/create', rentalController.create);
+    router.post('/rental/:id/tenant/add', rentalController.addTenant);
+    router.get('/rental/:id/tenant/:tenantId/documents', rentalController.getTenantDocuments);
+    router.post('/rental/:id/tenant/:tenantId/documents/upload', runRentalTenantDocUpload, rentalController.uploadTenantDocuments);
+    router.post('/rental/uploadPhotos/:id', runRentalPhotoUpload, rentalController.uploadPhotos);
     router.put('/rental/update/:id', rentalController.update);
     router.delete('/rental/delete/:id', rentalController.delete);
     router.get('/rentals', rentalController.listLegacy);
@@ -35,6 +60,7 @@ const createDomainRouter = (services) => {
     router.get('/renter/getAll', renterController.getAll);
     router.get('/renter/get/:id', renterController.get);
     router.post('/renter/create', renterController.create);
+    router.post('/renter/inquire', renterController.createInquiry);
     router.put('/renter/update/:id', renterController.update);
     router.delete('/renter/delete/:id', renterController.delete);
     router.get('/renters', renterController.listLegacy);
@@ -59,9 +85,19 @@ const createDomainRouter = (services) => {
     router.put('/bucket/update/:id', bucketController.update);
     router.delete('/bucket/delete/:id', bucketController.delete);
     const cashFlowController = new cashflow_controller_1.CashFlowController(services.cashFlowService);
+    const runCashflowAttachmentUpload = (req, res, next) => {
+        (0, cashflow_controller_2.cashFlowAttachmentUpload)(req, res, (error) => {
+            if (error) {
+                res.status(400).json({ error: error.message || 'Invalid attachment upload' });
+                return;
+            }
+            next();
+        });
+    };
     router.get('/cashflow/getAll', cashFlowController.getAll);
     router.get('/cashflow/get/:id', cashFlowController.get);
     router.post('/cashflow/create', cashFlowController.create);
+    router.post('/cashflow/attach/:id', runCashflowAttachmentUpload, cashFlowController.attachFile);
     router.put('/cashflow/update/:id', cashFlowController.update);
     router.delete('/cashflow/delete/:id', cashFlowController.delete);
     return router;

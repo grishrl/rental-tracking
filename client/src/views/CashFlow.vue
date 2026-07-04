@@ -82,7 +82,7 @@
                   color="primary" 
                   block 
                   large
-                  @click="showAddTransactionDialog = true"
+                  @click="openAddTransactionDialog"
                 >
                   <v-icon left>mdi-plus</v-icon>
                   Add Transaction
@@ -104,7 +104,7 @@
                   color="success" 
                   block 
                   large
-                  @click="showAllocateFundsDialog = true"
+                  @click="openAllocateFundsDialog"
                 >
                   <v-icon left>mdi-bank-transfer</v-icon>
                   Allocate Funds
@@ -443,7 +443,7 @@
             <v-icon class="mr-2">mdi-history</v-icon>
             Recent Transactions
             <v-spacer></v-spacer>
-            <v-btn small color="primary" @click="showAddTransactionDialog = true">
+            <v-btn small color="primary" @click="openAddTransactionDialog">
               <v-icon left small>mdi-plus</v-icon>
               Add Transaction
             </v-btn>
@@ -483,11 +483,28 @@
               </template>
               
               <template v-slot:item.transactionDate="{ item }">
-                {{ new Date(item.transactionDate).toLocaleDateString() }}
+                {{ formatTransactionDate(item.transactionDate) }}
+              </template>
+
+              <template v-slot:item.attachments="{ item }">
+                <div v-if="Array.isArray(item.attachments) && item.attachments.length" class="d-flex flex-wrap ga-1">
+                  <v-chip
+                    v-for="attachment in item.attachments"
+                    :key="attachment.id"
+                    x-small
+                    color="info"
+                    variant="outlined"
+                    :href="getAttachmentUrl(attachment)"
+                    target="_blank"
+                  >
+                    {{ attachment.originalName }}
+                  </v-chip>
+                </div>
+                <span v-else class="text-caption text-grey">None</span>
               </template>
               
               <template v-slot:item.actions="{ item }">
-                <v-btn icon small @click="editTransaction(item)" v-if="item.status === 'pending'">
+                <v-btn icon small @click="editTransaction(item)">
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
               </template>
@@ -496,7 +513,7 @@
                 <div class="text-center py-8">
                   <v-icon size="80" color="grey lighten-2">mdi-cash-remove</v-icon>
                   <p class="text-h6 mt-4 text-grey">No transactions yet</p>
-                  <v-btn color="primary" @click="showAddTransactionDialog = true">
+                  <v-btn color="primary" @click="openAddTransactionDialog">
                     Add Your First Transaction
                   </v-btn>
                 </div>
@@ -512,7 +529,7 @@
       <v-card>
         <v-card-title>
           <v-icon class="mr-2">mdi-plus</v-icon>
-          Add New Transaction
+          {{ editingTransactionId ? 'Edit Transaction' : 'Add New Transaction' }}
         </v-card-title>
         <v-card-text>
           <v-form ref="transactionForm" v-model="transactionFormValid">
@@ -521,6 +538,7 @@
                 <v-text-field
                   v-model="newTransaction.description"
                   label="Description"
+                  :disabled="!!editingTransactionId"
                   :rules="[v => !!v || 'Description is required']"
                   required
                 ></v-text-field>
@@ -544,6 +562,7 @@
                   item-title="text"
                   item-value="value"
                   label="Transaction Type"
+                  :disabled="!!editingTransactionId"
                   :rules="[v => !!v || 'Type is required']"
                   required
                 ></v-select>
@@ -556,6 +575,7 @@
                   item-title="text"
                   item-value="value"
                   label="Category"
+                  :disabled="!!editingTransactionId"
                   :rules="[v => !!v || 'Category is required']"
                   required
                 ></v-select>
@@ -566,6 +586,7 @@
                   v-model="newTransaction.transactionDate"
                   label="Transaction Date"
                   type="date"
+                  :disabled="!!editingTransactionId"
                   :rules="[v => !!v || 'Date is required']"
                   required
                 ></v-text-field>
@@ -578,6 +599,7 @@
                   item-title="text"
                   item-value="value"
                   label="Target Bucket"
+                  :disabled="!!editingTransactionId"
                   :rules="[v => !!v || 'Bucket is required for allocation']"
                 ></v-select>
               </v-col>
@@ -586,22 +608,47 @@
                 <v-textarea
                   v-model="newTransaction.notes"
                   label="Notes (Optional)"
+                  :disabled="!!editingTransactionId"
                   rows="2"
                 ></v-textarea>
+              </v-col>
+
+              <v-col cols="12">
+                <v-file-input
+                  v-model="newTransactionAttachments"
+                  label="Attachments (Optional)"
+                  accept="image/*,.pdf"
+                  prepend-icon="mdi-paperclip"
+                  chips
+                  multiple
+                  show-size
+                  counter
+                  hint="Attach receipts or supporting files"
+                  persistent-hint
+                ></v-file-input>
               </v-col>
             </v-row>
           </v-form>
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            v-if="editingTransactionId"
+            color="error"
+            variant="text"
+            @click="deleteTransactionFromDialog"
+          >
+            <v-icon left>mdi-delete</v-icon>
+            Delete Transaction
+          </v-btn>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="closeTransactionDialog">Cancel</v-btn>
           <v-btn 
             color="primary" 
-            @click="addTransaction"
+            @click="saveTransaction"
             :disabled="!transactionFormValid"
             :loading="addingTransaction"
           >
-            Add Transaction
+            {{ editingTransactionId ? 'Save Changes' : 'Add Transaction' }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -789,12 +836,15 @@ export default {
       showCreateBucketDialog: false,
       showAllocateFundsDialog: false,
       showBucketDetailsDialog: false,
+      editingTransactionId: null,
+      editingOriginalAmount: null,
       
       // Form validation
       transactionFormValid: false,
       bucketFormValid: false,
       
       // Data
+      currentUserId: 'mock-user-id',
       summary: {
         totalIncome: 0,
         totalExpenses: 0,
@@ -822,6 +872,7 @@ export default {
         notes: '',
         transactionDate: new Date().toISOString().substr(0, 10)
       },
+      newTransactionAttachments: [],
       
       newBucket: {
         name: '',
@@ -857,6 +908,7 @@ export default {
         { text: 'Type', value: 'type' },
         { text: 'Category', value: 'category' },
         { text: 'Amount', value: 'amount', align: 'end' },
+        { text: 'Attachments', value: 'attachments', sortable: false },
         { text: 'Status', value: 'status' },
         { text: 'Actions', value: 'actions', sortable: false }
       ]
@@ -880,17 +932,16 @@ export default {
     async loadData() {
       this.loading = true
       try {
-        // Load summary, buckets, and transactions
-        // Note: These endpoints would need to be implemented in the backend
         await Promise.all([
-          this.loadSummary(),
           this.loadBuckets(),
           this.loadTransactions()
         ])
+
+        this.loadSummary()
       } catch (error) {
         console.error('Error loading cash flow data:', error)
         this.$emit('show-snackbar', {
-          message: 'Error loading cash flow data',
+          message: error?.response?.data?.error || 'Error loading cash flow data',
           color: 'error'
         })
       } finally {
@@ -933,149 +984,51 @@ export default {
       })
     },
     
-    async loadSummary() {
-      // Mock data for now - replace with actual API call
+    loadSummary() {
+      const activeTransactions = this.transactions.filter(
+        transaction => transaction.status !== 'cancelled' && transaction.status !== 'failed'
+      )
+
+      const totalIncome = activeTransactions
+        .filter(transaction => transaction.type === 'income')
+        .reduce((total, transaction) => total + Math.abs(Number(transaction.amount || 0)), 0)
+
+      const totalExpenses = activeTransactions
+        .filter(transaction => transaction.type === 'expense')
+        .reduce((total, transaction) => total + Math.abs(Number(transaction.amount || 0)), 0)
+
+      const totalAllocations = activeTransactions
+        .filter(transaction => transaction.type === 'allocation')
+        .reduce((total, transaction) => total + Math.abs(Number(transaction.amount || 0)), 0)
+
+      const pendingTransactions = this.transactions.filter(
+        transaction => transaction.status === 'pending'
+      ).length
+
       this.summary = {
-        totalIncome: 12500.00,
-        totalExpenses: 8750.00,
-        netCashFlow: 3750.00,
-        pendingTransactions: 3
+        totalIncome,
+        totalExpenses,
+        netCashFlow: totalIncome - totalExpenses - totalAllocations,
+        pendingTransactions
       }
     },
     
     async loadBuckets() {
-      // Mock data for now - replace with actual API call
-      const getDateOffset = (days) => new Date(Date.now() + (days * 24 * 60 * 60 * 1000)).toISOString()
-      
-      this.buckets = [
-        {
-          id: '1',
-          name: 'Emergency Fund',
-          type: 'emergency',
-          currentAmount: 2500,
-          targetAmount: 10000,
-          priority: 9,
-          color: '#F44336',
-          icon: 'mdi-shield-alert',
-          progress: { percentComplete: 25 },
-          targetDate: getDateOffset(90)
-        },
-        {
-          id: '2',
-          name: 'Vacation Fund',
-          type: 'savings',
-          currentAmount: 1200,
-          targetAmount: 5000,
-          priority: 6,
-          color: '#4CAF50',
-          icon: 'mdi-airplane',
-          progress: { percentComplete: 24 },
-          targetDate: getDateOffset(180)
-        },
-        {
-          id: '3',
-          name: 'Car Maintenance',
-          type: 'expense',
-          currentAmount: 800,
-          targetAmount: 2000,
-          priority: 7,
-          color: '#FF9800',
-          icon: 'mdi-car',
-          progress: { percentComplete: 40 },
-          targetDate: getDateOffset(60)
+      const response = await axios.get('/api/bucket/getAll', {
+        params: {
+          ownerId: this.currentUserId
         }
-      ]
+      })
+
+      this.buckets = Array.isArray(response.data) ? response.data : []
     },
     
     async loadTransactions() {
       this.loadingTransactions = true
       try {
-        // Mock data for now - replace with actual API call
-        const today = new Date()
-        const getDateOffset = (days) => new Date(Date.now() + (days * 24 * 60 * 60 * 1000)).toISOString()
-        
-        this.transactions = [
-          {
-            id: '1',
-            description: 'Monthly Salary',
-            amount: 5000,
-            type: 'income',
-            category: 'salary',
-            status: 'completed',
-            transactionDate: today.toISOString(),
-            bucketId: null
-          },
-          {
-            id: '2',
-            description: 'Grocery Shopping',
-            amount: 150,
-            type: 'expense',
-            category: 'groceries',
-            status: 'completed',
-            transactionDate: getDateOffset(-1),
-            bucketId: null
-          },
-          {
-            id: '3',
-            description: 'Emergency Fund Allocation',
-            amount: 500,
-            type: 'allocation',
-            category: 'other_income',
-            status: 'pending',
-            transactionDate: getDateOffset(2),
-            bucketId: '1'
-          },
-          {
-            id: '4',
-            description: 'Rent Payment',
-            amount: 1200,
-            type: 'expense',
-            category: 'rent',
-            status: 'completed',
-            transactionDate: getDateOffset(-3),
-            bucketId: null
-          },
-          {
-            id: '5',
-            description: 'Freelance Project',
-            amount: 800,
-            type: 'income',
-            category: 'business',
-            status: 'completed',
-            transactionDate: getDateOffset(-5),
-            bucketId: null
-          },
-          {
-            id: '6',
-            description: 'Vacation Fund Transfer',
-            amount: 300,
-            type: 'allocation',
-            category: 'other_income',
-            status: 'pending',
-            transactionDate: getDateOffset(7),
-            bucketId: '2'
-          },
-          {
-            id: '7',
-            description: 'Utility Bills',
-            amount: 180,
-            type: 'expense',
-            category: 'utilities',
-            status: 'completed',
-            transactionDate: getDateOffset(-2),
-            bucketId: null
-          },
-          {
-            id: '8',
-            description: 'Investment Dividend',
-            amount: 250,
-            type: 'income',
-            category: 'investment',
-            status: 'completed',
-            transactionDate: getDateOffset(-7),
-            bucketId: null
-          }
-        ]
+        const response = await axios.get('/api/cashflow/getAll')
+
+        this.transactions = Array.isArray(response.data) ? response.data : []
       } finally {
         this.loadingTransactions = false
       }
@@ -1147,28 +1100,108 @@ export default {
       }
       return colors[status] || 'grey'
     },
+
+    toLocalDateIso(dateValue) {
+      if (!dateValue) return new Date().toISOString()
+
+      const [year, month, day] = String(dateValue).split('T')[0].split('-').map(Number)
+      if (!year || !month || !day) return new Date().toISOString()
+
+      // Build the date in local time to prevent UTC parsing from shifting day in UI.
+      return new Date(year, month - 1, day).toISOString()
+    },
+
+    formatTransactionDate(dateValue) {
+      if (!dateValue) return ''
+
+      const [year, month, day] = String(dateValue).split('T')[0].split('-').map(Number)
+      if (!year || !month || !day) {
+        return new Date(dateValue).toLocaleDateString()
+      }
+
+      return new Date(year, month - 1, day).toLocaleDateString()
+    },
+
+    getAttachmentUrl(attachment) {
+      if (!attachment?.url) return ''
+      return attachment.url
+    },
+
+    async uploadTransactionAttachments(transactionId) {
+      if (!this.newTransactionAttachments.length) return
+
+      for (const file of this.newTransactionAttachments) {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        await axios.post(`/api/cashflow/attach/${transactionId}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+      }
+    },
     
-    async addTransaction() {
+    async saveTransaction() {
       if (!this.$refs.transactionForm.validate()) return
       
       this.addingTransaction = true
       try {
-        // Create transaction object
+        if (this.editingTransactionId) {
+          const nextAmount = Number(this.newTransaction.amount)
+          const updatePayload = {}
+
+          if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+            this.$emit('show-snackbar', {
+              message: 'Amount must be greater than zero',
+              color: 'warning'
+            })
+            return
+          }
+
+          if (this.editingOriginalAmount === null || nextAmount !== this.editingOriginalAmount) {
+            updatePayload.amount = nextAmount
+          }
+
+          if (Object.keys(updatePayload).length > 0) {
+            await axios.put(`/api/cashflow/update/${this.editingTransactionId}`, updatePayload)
+          }
+
+          if (this.newTransactionAttachments.length) {
+            await this.uploadTransactionAttachments(this.editingTransactionId)
+          }
+
+          if (Object.keys(updatePayload).length === 0 && !this.newTransactionAttachments.length) {
+            this.$emit('show-snackbar', {
+              message: 'No changes to save',
+              color: 'warning'
+            })
+            return
+          }
+
+          this.closeTransactionDialog()
+          this.$emit('show-snackbar', {
+            message: 'Transaction updated successfully',
+            color: 'success'
+          })
+
+          await this.loadData()
+          return
+        }
+
         const transaction = {
           ...this.newTransaction,
-          transactionDate: this.newTransaction.transactionDate || new Date().toISOString(),
-          status: 'pending',
-          userId: 'mock-user-id' // Replace with actual user ID
+          transactionDate: this.toLocalDateIso(this.newTransaction.transactionDate),
+          status: this.newTransaction.type === 'allocation' ? 'completed' : 'pending',
+          userId: this.currentUserId
         }
         
-        // TODO: Replace with actual API call
-        // const response = await axios.post('/api/cashflow', transaction)
-        
-        // For now, just add to local array
-        this.transactions.unshift({
-          ...transaction,
-          id: Date.now().toString()
-        })
+        const response = await axios.post('/api/cashflow/create', transaction)
+        const createdTransaction = response.data
+
+        if (createdTransaction?.id && this.newTransactionAttachments.length) {
+          await this.uploadTransactionAttachments(createdTransaction.id)
+        }
         
         this.closeTransactionDialog()
         this.$emit('show-snackbar', {
@@ -1179,14 +1212,30 @@ export default {
         // Reload data
         await this.loadData()
       } catch (error) {
-        console.error('Error adding transaction:', error)
+        console.error('Error saving transaction:', error)
         this.$emit('show-snackbar', {
-          message: 'Error adding transaction',
+          message: error?.response?.data?.error || 'Error saving transaction',
           color: 'error'
         })
       } finally {
         this.addingTransaction = false
       }
+    },
+
+    openAddTransactionDialog() {
+      this.editingTransactionId = null
+      this.editingOriginalAmount = null
+      this.newTransaction = {
+        description: '',
+        amount: null,
+        type: 'income',
+        category: '',
+        bucketId: null,
+        notes: '',
+        transactionDate: new Date().toISOString().substr(0, 10)
+      }
+      this.newTransactionAttachments = []
+      this.showAddTransactionDialog = true
     },
     
     async createBucket() {
@@ -1194,42 +1243,62 @@ export default {
       
       this.creatingBucket = true
       try {
-        // Create bucket object
         const bucket = {
           ...this.newBucket,
-          ownerId: 'mock-user-id', // Replace with actual user ID
+          ownerId: this.currentUserId,
           status: 'active',
           currentAmount: 0
         }
         
-        if (bucket.targetDate) {
-          bucket.targetDate = new Date(bucket.targetDate)
+        if (!bucket.targetDate) {
+          delete bucket.targetDate
+        } else {
+          bucket.targetDate = new Date(bucket.targetDate).toISOString()
         }
         
-        // TODO: Replace with actual API call
-        // const response = await axios.post('/api/buckets', bucket)
-        
-        // For now, just add to local array
-        this.buckets.push({
-          ...bucket,
-          id: Date.now().toString(),
-          progress: { percentComplete: 0 }
-        })
+        await axios.post('/api/bucket/create', bucket)
         
         this.closeBucketDialog()
         this.$emit('show-snackbar', {
           message: 'Bucket created successfully',
           color: 'success'
         })
+
+        await this.loadData()
       } catch (error) {
         console.error('Error creating bucket:', error)
         this.$emit('show-snackbar', {
-          message: 'Error creating bucket',
+          message: error?.response?.data?.error || 'Error creating bucket',
           color: 'error'
         })
       } finally {
         this.creatingBucket = false
       }
+    },
+
+    openAllocateFundsDialog() {
+      if (!this.buckets.length) {
+        this.$emit('show-snackbar', {
+          message: 'Create a bucket first before allocating funds',
+          color: 'warning'
+        })
+        return
+      }
+
+      this.newTransaction = {
+        description: 'Bucket Allocation',
+        amount: null,
+        type: 'allocation',
+        category: 'other_income',
+        bucketId: this.buckets[0]?.id || null,
+        notes: '',
+        transactionDate: new Date().toISOString().substr(0, 10)
+      }
+      this.editingTransactionId = null
+      this.editingOriginalAmount = null
+      this.newTransactionAttachments = []
+
+      this.showAddTransactionDialog = true
     },
     
     addFundsToBucket(bucket) {
@@ -1243,11 +1312,16 @@ export default {
         notes: '',
         transactionDate: new Date().toISOString().substr(0, 10)
       }
+      this.editingTransactionId = null
+      this.editingOriginalAmount = null
+      this.newTransactionAttachments = []
       this.showAddTransactionDialog = true
     },
     
     closeTransactionDialog() {
       this.showAddTransactionDialog = false
+      this.editingTransactionId = null
+      this.editingOriginalAmount = null
       this.newTransaction = {
         description: '',
         amount: null,
@@ -1257,7 +1331,34 @@ export default {
         notes: '',
         transactionDate: new Date().toISOString().substr(0, 10)
       }
+      this.newTransactionAttachments = []
       this.$refs.transactionForm?.resetValidation()
+    },
+
+    async deleteTransactionFromDialog() {
+      if (!this.editingTransactionId) return
+
+      const confirmed = window.confirm('Delete this transaction? This action cannot be undone.')
+      if (!confirmed) return
+
+      this.addingTransaction = true
+      try {
+        await axios.delete(`/api/cashflow/delete/${this.editingTransactionId}`)
+        this.closeTransactionDialog()
+        this.$emit('show-snackbar', {
+          message: 'Transaction deleted successfully',
+          color: 'success'
+        })
+        await this.loadData()
+      } catch (error) {
+        console.error('Error deleting transaction:', error)
+        this.$emit('show-snackbar', {
+          message: error?.response?.data?.error || 'Error deleting transaction',
+          color: 'error'
+        })
+      } finally {
+        this.addingTransaction = false
+      }
     },
     
     closeBucketDialog() {
@@ -1285,8 +1386,19 @@ export default {
     },
     
     editTransaction(transaction) {
-      // TODO: Implement transaction editing
-      console.log('Edit transaction:', transaction)
+      this.editingTransactionId = transaction.id
+      this.editingOriginalAmount = Number(transaction.amount || 0)
+      this.newTransaction = {
+        description: transaction.description || '',
+        amount: Number(transaction.amount || 0),
+        type: transaction.type || 'income',
+        category: transaction.category || '',
+        bucketId: transaction.bucketId || null,
+        notes: transaction.notes || '',
+        transactionDate: String(transaction.transactionDate || '').split('T')[0] || new Date().toISOString().substr(0, 10)
+      }
+      this.newTransactionAttachments = []
+      this.showAddTransactionDialog = true
     },
     
     exportData() {
@@ -1395,6 +1507,9 @@ export default {
         notes: '',
         transactionDate
       }
+      this.editingTransactionId = null
+      this.editingOriginalAmount = null
+      this.newTransactionAttachments = []
       this.showAddTransactionDialog = true
     },
     

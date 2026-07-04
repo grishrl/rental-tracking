@@ -86,10 +86,13 @@ export interface IRenter extends BaseEntity {
         specialRequests?: string;
     };
     currentRentalId?: string;
+    interestedRentalId?: string;
     leaseStartDate?: Date;
     leaseEndDate?: Date;
     monthlyRent?: number;
     securityDeposit?: number;
+    inquiryMessage?: string;
+    leadSource?: 'website' | 'phone' | 'email' | 'walk-in' | 'other';
     documents?: {
         type: 'id' | 'income_proof' | 'reference_letter' | 'credit_report' | 'other';
         filename: string;
@@ -144,10 +147,13 @@ export declare class Renter implements IRenter {
         specialRequests?: string;
     };
     currentRentalId?: string;
+    interestedRentalId?: string;
     leaseStartDate?: Date;
     leaseEndDate?: Date;
     monthlyRent?: number;
     securityDeposit?: number;
+    inquiryMessage?: string;
+    leadSource?: 'website' | 'phone' | 'email' | 'walk-in' | 'other';
     documents?: {
         type: 'id' | 'income_proof' | 'reference_letter' | 'credit_report' | 'other';
         filename: string;

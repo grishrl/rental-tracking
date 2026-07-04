@@ -4,6 +4,16 @@ export type TransactionType = 'income' | 'expense' | 'transfer' | 'allocation';
 export type TransactionCategory = 'salary' | 'rental_income' | 'investment' | 'business' | 'gift' | 'refund' | 'other_income' | 'rent' | 'utilities' | 'groceries' | 'entertainment' | 'transport' | 'healthcare' | 'insurance' | 'debt_payment' | 'other_expense';
 export type TransactionStatus = 'pending' | 'completed' | 'cancelled' | 'failed';
 
+export interface ITransactionAttachment {
+  id: string;
+  fileName: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  uploadedAt: Date;
+}
+
 export interface ICashFlow extends BaseEntity {
   description: string;
   amount: number;
@@ -36,6 +46,7 @@ export interface ICashFlow extends BaseEntity {
   // Metadata
   tags?: string[];
   notes?: string;
+  attachments?: ITransactionAttachment[];
 }
 
 export class CashFlow implements ICashFlow {
@@ -61,6 +72,7 @@ export class CashFlow implements ICashFlow {
   };
   public tags?: string[];
   public notes?: string;
+  public attachments?: ITransactionAttachment[];
   public createdAt: Date;
   public updatedAt: Date;
 
@@ -81,6 +93,7 @@ export class CashFlow implements ICashFlow {
     this.recurring = data.recurring;
     this.tags = data.tags || [];
     this.notes = data.notes;
+    this.attachments = data.attachments || [];
     this.createdAt = new Date();
     this.updatedAt = new Date();
   }
@@ -151,6 +164,7 @@ export class CashFlow implements ICashFlow {
       recurring: this.recurring,
       tags: this.tags,
       notes: this.notes,
+      attachments: this.attachments,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

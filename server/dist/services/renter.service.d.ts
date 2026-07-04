@@ -17,11 +17,21 @@ export interface ApplicationDecision {
     conditions?: string[];
     requiredDocuments?: string[];
 }
+export interface RenterInquiryInput {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    preferredContactMethod?: 'email' | 'phone' | 'text';
+    interestedRentalId: string;
+    inquiryMessage?: string;
+}
 export declare class RenterService {
     private renterRepository;
     private rentalRepository;
     constructor(renterRepository: IRenterRepository, rentalRepository: IRentalRepository);
     createRenter(renterData: Omit<IRenter, 'id' | 'createdAt' | 'updatedAt'>): Promise<IRenter>;
+    createInquiry(input: RenterInquiryInput): Promise<IRenter>;
     updateRenter(id: string, updates: Partial<Omit<IRenter, 'id' | 'createdAt' | 'updatedAt'>>): Promise<IRenter | null>;
     deleteRenter(id: string): Promise<boolean>;
     getRenterById(id: string): Promise<IRenter | null>;

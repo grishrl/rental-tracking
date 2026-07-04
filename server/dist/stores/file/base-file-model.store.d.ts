@@ -21,6 +21,7 @@ export declare abstract class BaseFileModelStore<T extends BaseEntity> implement
     protected generateId(): string;
     private enqueueWrite;
     private readRecords;
+    private readRecordsDirect;
     private writeRecordsDirect;
     private matchesCriteria;
     private areValuesEqual;

@@ -1,5 +1,24 @@
 import { BaseEntity } from '../interfaces/repository.interface';
 
+export interface IRentalTenantDocument {
+  id: string;
+  type: 'application' | 'lease_agreement' | 'lease_modification' | 'other';
+  originalName: string;
+  fileName: string;
+  url: string;
+  uploadedAt: Date;
+}
+
+export interface IRentalTenant {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  startDate: Date;
+  endDate?: Date;
+  status: 'current' | 'past';
+  documents?: IRentalTenantDocument[];
+}
+
 export interface IRental extends BaseEntity {
   title: string;
   description: string;
@@ -33,6 +52,9 @@ export interface IRental extends BaseEntity {
     securityDeposit: number;
     leaseTerms?: string;
   };
+
+  // Property-scoped tenant tracking
+  tenants?: IRentalTenant[];
 }
 
 export class Rental implements IRental {
@@ -59,6 +81,7 @@ export class Rental implements IRental {
     internet: boolean;
     cable: boolean;
   };
+  public tenants?: IRentalTenant[];
   public createdAt: Date;
   public updatedAt: Date;
 
@@ -80,6 +103,7 @@ export class Rental implements IRental {
     this.leaseDuration = data.leaseDuration;
     this.petPolicy = data.petPolicy;
     this.utilities = data.utilities;
+    this.tenants = data.tenants || [];
     this.createdAt = new Date();
     this.updatedAt = new Date();
   }
@@ -111,6 +135,7 @@ export class Rental implements IRental {
       leaseDuration: this.leaseDuration,
       petPolicy: this.petPolicy,
       utilities: this.utilities,
+      tenants: this.tenants,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

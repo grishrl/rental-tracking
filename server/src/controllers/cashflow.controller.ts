@@ -1,5 +1,41 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
+import { randomUUID } from 'crypto';
+import multer from 'multer';
 import { CashFlowService } from '../services/cashflow.service';
+
+const attachmentStorageDir = path.resolve(__dirname, '../../../store/cashflow/attachments');
+const allowedFileTypes = new Set(['application/pdf']);
+
+const attachmentStorage = multer.diskStorage({
+  destination: (_req, _file, callback) => {
+    fs.mkdirSync(attachmentStorageDir, { recursive: true });
+    callback(null, attachmentStorageDir);
+  },
+  filename: (_req, file, callback) => {
+    const extension = path.extname(file.originalname);
+    callback(null, `${Date.now()}-${randomUUID()}${extension}`);
+  },
+});
+
+export const cashFlowAttachmentUpload = multer({
+  storage: attachmentStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    const isImage = file.mimetype.startsWith('image/');
+    const isPdf = allowedFileTypes.has(file.mimetype);
+
+    if (!isImage && !isPdf) {
+      callback(new Error('Only images and PDF files are supported'));
+      return;
+    }
+
+    callback(null, true);
+  },
+}).single('file');
 
 export class CashFlowController {
   constructor(private readonly cashFlowService: CashFlowService) {}
@@ -7,15 +43,14 @@ export class CashFlowController {
   getAll = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = req.query.userId as string | undefined;
-      if (!userId) {
-        res.status(400).json({ error: 'userId query parameter is required' });
-        return;
-      }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
       const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
 
-      const transactions = await this.cashFlowService.getUserTransactions(userId, limit, offset);
+      const transactions = userId
+        ? await this.cashFlowService.getUserTransactions(userId, limit, offset)
+        : await this.cashFlowService.getAllTransactions(limit, offset);
+
       res.json(transactions);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -25,15 +60,14 @@ export class CashFlowController {
   get = async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = req.query.userId as string | undefined;
-      if (!userId) {
-        res.status(400).json({ error: 'userId query parameter is required' });
+      const transaction = await this.cashFlowService.getTransactionById(req.params.id);
+
+      if (!transaction) {
+        res.status(404).json({ error: 'Transaction not found' });
         return;
       }
 
-      const transactions = await this.cashFlowService.getUserTransactions(userId);
-      const transaction = transactions.find((item) => item.id === req.params.id);
-
-      if (!transaction) {
+      if (userId && transaction.userId !== userId) {
         res.status(404).json({ error: 'Transaction not found' });
         return;
       }
@@ -62,6 +96,29 @@ export class CashFlowController {
       }
 
       res.json(transaction);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  attachFile = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const uploadedFile = (req as Request & { file?: Express.Multer.File }).file;
+
+      if (!uploadedFile) {
+        res.status(400).json({ error: 'Attachment file is required' });
+        return;
+      }
+
+      const updatedTransaction = await this.cashFlowService.attachFileToTransaction(req.params.id, {
+        fileName: uploadedFile.filename,
+        originalName: uploadedFile.originalname,
+        mimeType: uploadedFile.mimetype,
+        size: uploadedFile.size,
+        url: `/api/uploads/transactions/${uploadedFile.filename}`,
+      });
+
+      res.status(201).json(updatedTransaction);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

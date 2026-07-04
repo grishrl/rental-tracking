@@ -20,6 +20,7 @@ class Rental {
         this.leaseDuration = data.leaseDuration;
         this.petPolicy = data.petPolicy;
         this.utilities = data.utilities;
+        this.tenants = data.tenants || [];
         this.createdAt = new Date();
         this.updatedAt = new Date();
     }
@@ -48,6 +49,7 @@ class Rental {
             leaseDuration: this.leaseDuration,
             petPolicy: this.petPolicy,
             utilities: this.utilities,
+            tenants: this.tenants,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
         };

@@ -6,9 +6,12 @@ import { BucketService } from '../services/bucket.service';
 import { CashFlowService } from '../services/cashflow.service';
 import { UserController } from '../controllers/user.controller';
 import { RentalController } from '../controllers/rental.controller';
+import { rentalPhotoUpload } from '../controllers/rental.controller';
+import { rentalTenantDocUpload } from '../controllers/rental.controller';
 import { RenterController } from '../controllers/renter.controller';
 import { BucketController } from '../controllers/bucket.controller';
 import { CashFlowController } from '../controllers/cashflow.controller';
+import { cashFlowAttachmentUpload } from '../controllers/cashflow.controller';
 
 export interface DomainServices {
   userService: UserService;
@@ -34,9 +37,34 @@ export const createDomainRouter = (services: DomainServices): Router => {
   router.delete('/users/:id', userController.delete);
 
   const rentalController = new RentalController(services.rentalService);
+  const runRentalPhotoUpload = (req: any, res: any, next: any) => {
+    rentalPhotoUpload(req, res, (error: any) => {
+      if (error) {
+        res.status(400).json({ error: error.message || 'Invalid rental photo upload' });
+        return;
+      }
+
+      next();
+    });
+  };
+  const runRentalTenantDocUpload = (req: any, res: any, next: any) => {
+    rentalTenantDocUpload(req, res, (error: any) => {
+      if (error) {
+        res.status(400).json({ error: error.message || 'Invalid rental tenant document upload' });
+        return;
+      }
+
+      next();
+    });
+  };
+
   router.get('/rental/getAll', rentalController.getAll);
   router.get('/rental/get/:id', rentalController.get);
   router.post('/rental/create', rentalController.create);
+  router.post('/rental/:id/tenant/add', rentalController.addTenant);
+  router.get('/rental/:id/tenant/:tenantId/documents', rentalController.getTenantDocuments);
+  router.post('/rental/:id/tenant/:tenantId/documents/upload', runRentalTenantDocUpload, rentalController.uploadTenantDocuments);
+  router.post('/rental/uploadPhotos/:id', runRentalPhotoUpload, rentalController.uploadPhotos);
   router.put('/rental/update/:id', rentalController.update);
   router.delete('/rental/delete/:id', rentalController.delete);
   router.get('/rentals', rentalController.listLegacy);
@@ -49,6 +77,7 @@ export const createDomainRouter = (services: DomainServices): Router => {
   router.get('/renter/getAll', renterController.getAll);
   router.get('/renter/get/:id', renterController.get);
   router.post('/renter/create', renterController.create);
+  router.post('/renter/inquire', renterController.createInquiry);
   router.put('/renter/update/:id', renterController.update);
   router.delete('/renter/delete/:id', renterController.delete);
   router.get('/renters', renterController.listLegacy);
@@ -75,9 +104,21 @@ export const createDomainRouter = (services: DomainServices): Router => {
   router.delete('/bucket/delete/:id', bucketController.delete);
 
   const cashFlowController = new CashFlowController(services.cashFlowService);
+  const runCashflowAttachmentUpload = (req: any, res: any, next: any) => {
+    cashFlowAttachmentUpload(req, res, (error: any) => {
+      if (error) {
+        res.status(400).json({ error: error.message || 'Invalid attachment upload' });
+        return;
+      }
+
+      next();
+    });
+  };
+
   router.get('/cashflow/getAll', cashFlowController.getAll);
   router.get('/cashflow/get/:id', cashFlowController.get);
   router.post('/cashflow/create', cashFlowController.create);
+  router.post('/cashflow/attach/:id', runCashflowAttachmentUpload, cashFlowController.attachFile);
   router.put('/cashflow/update/:id', cashFlowController.update);
   router.delete('/cashflow/delete/:id', cashFlowController.delete);
 

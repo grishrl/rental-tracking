@@ -2,6 +2,15 @@ import { BaseEntity } from '../interfaces/repository.interface';
 export type TransactionType = 'income' | 'expense' | 'transfer' | 'allocation';
 export type TransactionCategory = 'salary' | 'rental_income' | 'investment' | 'business' | 'gift' | 'refund' | 'other_income' | 'rent' | 'utilities' | 'groceries' | 'entertainment' | 'transport' | 'healthcare' | 'insurance' | 'debt_payment' | 'other_expense';
 export type TransactionStatus = 'pending' | 'completed' | 'cancelled' | 'failed';
+export interface ITransactionAttachment {
+    id: string;
+    fileName: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    url: string;
+    uploadedAt: Date;
+}
 export interface ICashFlow extends BaseEntity {
     description: string;
     amount: number;
@@ -24,6 +33,7 @@ export interface ICashFlow extends BaseEntity {
     };
     tags?: string[];
     notes?: string;
+    attachments?: ITransactionAttachment[];
 }
 export declare class CashFlow implements ICashFlow {
     id: string;
@@ -48,6 +58,7 @@ export declare class CashFlow implements ICashFlow {
     };
     tags?: string[];
     notes?: string;
+    attachments?: ITransactionAttachment[];
     createdAt: Date;
     updatedAt: Date;
     constructor(data: Omit<ICashFlow, 'id' | 'createdAt' | 'updatedAt'>);

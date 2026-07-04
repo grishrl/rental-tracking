@@ -13,6 +13,97 @@ class RenterService {
         const renter = new renter_model_1.Renter(renterData);
         return this.renterRepository.create(renter.toJSON());
     }
+    async createInquiry(input) {
+        if (!input.firstName?.trim()) {
+            throw new Error('First name is required');
+        }
+        if (!input.lastName?.trim()) {
+            throw new Error('Last name is required');
+        }
+        if (!this.isValidEmail(input.email)) {
+            throw new Error('Valid email is required');
+        }
+        if (!input.phoneNumber?.trim()) {
+            throw new Error('Phone number is required');
+        }
+        if (!input.interestedRentalId?.trim()) {
+            throw new Error('Interested rental ID is required');
+        }
+        const rental = await this.rentalRepository.findById(input.interestedRentalId);
+        if (!rental) {
+            throw new Error('Interested rental not found');
+        }
+        const existingByEmail = await this.renterRepository.findByEmail(input.email);
+        const communicationType = input.preferredContactMethod === 'text'
+            ? 'text'
+            : input.preferredContactMethod === 'phone'
+                ? 'phone'
+                : 'email';
+        if (existingByEmail) {
+            const updatedHistory = [
+                ...(existingByEmail.communicationHistory || []),
+                {
+                    date: new Date(),
+                    type: communicationType,
+                    summary: `New inquiry for rental ${rental.title} (${rental.id}). ${input.inquiryMessage || ''}`.trim(),
+                    followUpRequired: true,
+                },
+            ];
+            const updated = await this.renterRepository.update(existingByEmail.id, {
+                interestedRentalId: rental.id,
+                inquiryMessage: input.inquiryMessage,
+                leadSource: 'website',
+                preferredContactMethod: input.preferredContactMethod || existingByEmail.preferredContactMethod || 'email',
+                communicationHistory: updatedHistory,
+                status: existingByEmail.status === 'blacklisted' ? existingByEmail.status : 'prospective',
+            });
+            if (!updated) {
+                throw new Error('Failed to update existing renter inquiry');
+            }
+            return updated;
+        }
+        const inquiryRenter = new renter_model_1.Renter({
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            dateOfBirth: new Date('1990-01-01T00:00:00.000Z'),
+            email: input.email.trim(),
+            phoneNumber: input.phoneNumber.trim(),
+            currentAddress: {
+                street: 'TBD',
+                city: 'TBD',
+                state: 'TBD',
+                zipCode: '00000',
+                country: 'USA',
+            },
+            status: 'prospective',
+            applicationStatus: 'pending',
+            applicationDate: new Date(),
+            totalMonthlyIncome: 0,
+            emergencyContacts: [],
+            references: [],
+            rentalHistory: [],
+            creditInfo: {
+                hasDeclarations: false,
+                bankruptcyHistory: false,
+                evictionHistory: false,
+                criminalBackground: false,
+            },
+            preferredContactMethod: input.preferredContactMethod || 'email',
+            communicationHistory: [
+                {
+                    date: new Date(),
+                    type: communicationType,
+                    summary: `Initial inquiry for rental ${rental.title} (${rental.id}). ${input.inquiryMessage || ''}`.trim(),
+                    followUpRequired: true,
+                },
+            ],
+            interestedRentalId: rental.id,
+            inquiryMessage: input.inquiryMessage,
+            leadSource: 'website',
+            notes: `Prospective renter inquiry submitted for rental ${rental.title} (${rental.id}).`,
+        });
+        return this.renterRepository.create(inquiryRenter.toJSON());
+    }
     async updateRenter(id, updates) {
         const existingRenter = await this.renterRepository.findById(id);
         if (!existingRenter) {

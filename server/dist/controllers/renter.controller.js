@@ -63,6 +63,15 @@ class RenterController {
                 res.status(400).json({ error: error.message });
             }
         };
+        this.createInquiry = async (req, res) => {
+            try {
+                const renter = await this.renterService.createInquiry(req.body);
+                res.status(201).json(renter);
+            }
+            catch (error) {
+                res.status(400).json({ error: error.message });
+            }
+        };
         this.update = async (req, res) => {
             try {
                 const renter = await this.renterService.updateRenter(req.params.id, req.body);

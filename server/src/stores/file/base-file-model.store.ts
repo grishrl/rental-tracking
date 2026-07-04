@@ -67,7 +67,7 @@ export abstract class BaseFileModelStore<T extends BaseEntity>
     };
 
     await this.enqueueWrite(async () => {
-      const records = await this.readRecords();
+      const records = await this.readRecordsDirect();
       records.push(entity);
       await this.writeRecordsDirect(records);
     });
@@ -85,7 +85,7 @@ export abstract class BaseFileModelStore<T extends BaseEntity>
     }));
 
     await this.enqueueWrite(async () => {
-      const records = await this.readRecords();
+      const records = await this.readRecordsDirect();
       records.push(...entities);
       await this.writeRecordsDirect(records);
     });
@@ -97,7 +97,7 @@ export abstract class BaseFileModelStore<T extends BaseEntity>
     let updatedRecord: T | null = null;
 
     await this.enqueueWrite(async () => {
-      const records = await this.readRecords();
+      const records = await this.readRecordsDirect();
       const index = records.findIndex((record) => record.id === id);
 
       if (index < 0) {
@@ -123,7 +123,7 @@ export abstract class BaseFileModelStore<T extends BaseEntity>
     let deleted = false;
 
     await this.enqueueWrite(async () => {
-      const records = await this.readRecords();
+      const records = await this.readRecordsDirect();
       const filtered = records.filter((record) => record.id !== id);
 
       if (filtered.length === records.length) {
@@ -142,7 +142,7 @@ export abstract class BaseFileModelStore<T extends BaseEntity>
     const idSet = new Set(ids);
 
     await this.enqueueWrite(async () => {
-      const records = await this.readRecords();
+      const records = await this.readRecordsDirect();
       const filtered = records.filter((record) => !idSet.has(record.id));
       deletedCount = records.length - filtered.length;
 
@@ -181,6 +181,12 @@ export abstract class BaseFileModelStore<T extends BaseEntity>
   private async readRecords(): Promise<T[]> {
     await this.initialize();
     await this.writeQueue;
+
+    return this.readRecordsDirect();
+  }
+
+  private async readRecordsDirect(): Promise<T[]> {
+    await this.initialize();
 
     const rawText = await fs.readFile(this.filePath, 'utf8');
     const parsed = JSON.parse(rawText);

@@ -1,4 +1,21 @@
 import { BaseEntity } from '../interfaces/repository.interface';
+export interface IRentalTenantDocument {
+    id: string;
+    type: 'application' | 'lease_agreement' | 'lease_modification' | 'other';
+    originalName: string;
+    fileName: string;
+    url: string;
+    uploadedAt: Date;
+}
+export interface IRentalTenant {
+    id: string;
+    name: string;
+    phoneNumber: string;
+    startDate: Date;
+    endDate?: Date;
+    status: 'current' | 'past';
+    documents?: IRentalTenantDocument[];
+}
 export interface IRental extends BaseEntity {
     title: string;
     description: string;
@@ -30,6 +47,7 @@ export interface IRental extends BaseEntity {
         securityDeposit: number;
         leaseTerms?: string;
     };
+    tenants?: IRentalTenant[];
 }
 export declare class Rental implements IRental {
     id: string;
@@ -55,6 +73,7 @@ export declare class Rental implements IRental {
         internet: boolean;
         cable: boolean;
     };
+    tenants?: IRentalTenant[];
     createdAt: Date;
     updatedAt: Date;
     constructor(data: Omit<IRental, 'id' | 'createdAt' | 'updatedAt'>);

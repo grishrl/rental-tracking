@@ -110,10 +110,15 @@ export interface IRenter extends BaseEntity {
   
   // Current Rental Information (if renting)
   currentRentalId?: string;
+  interestedRentalId?: string;
   leaseStartDate?: Date;
   leaseEndDate?: Date;
   monthlyRent?: number;
   securityDeposit?: number;
+
+  // Inquiry / lead data for prospective renters
+  inquiryMessage?: string;
+  leadSource?: 'website' | 'phone' | 'email' | 'walk-in' | 'other';
   
   // Documents and Notes
   documents?: {
@@ -173,10 +178,13 @@ export class Renter implements IRenter {
     specialRequests?: string;
   };
   public currentRentalId?: string;
+  public interestedRentalId?: string;
   public leaseStartDate?: Date;
   public leaseEndDate?: Date;
   public monthlyRent?: number;
   public securityDeposit?: number;
+  public inquiryMessage?: string;
+  public leadSource?: 'website' | 'phone' | 'email' | 'walk-in' | 'other';
   public documents?: {
     type: 'id' | 'income_proof' | 'reference_letter' | 'credit_report' | 'other';
     filename: string;
@@ -220,10 +228,13 @@ export class Renter implements IRenter {
     this.creditInfo = data.creditInfo;
     this.preferences = data.preferences;
     this.currentRentalId = data.currentRentalId;
+    this.interestedRentalId = data.interestedRentalId;
     this.leaseStartDate = data.leaseStartDate;
     this.leaseEndDate = data.leaseEndDate;
     this.monthlyRent = data.monthlyRent;
     this.securityDeposit = data.securityDeposit;
+    this.inquiryMessage = data.inquiryMessage;
+    this.leadSource = data.leadSource;
     this.documents = data.documents || [];
     this.notes = data.notes;
     this.internalNotes = data.internalNotes;
@@ -376,10 +387,13 @@ export class Renter implements IRenter {
       creditInfo: this.creditInfo,
       preferences: this.preferences,
       currentRentalId: this.currentRentalId,
+      interestedRentalId: this.interestedRentalId,
       leaseStartDate: this.leaseStartDate,
       leaseEndDate: this.leaseEndDate,
       monthlyRent: this.monthlyRent,
       securityDeposit: this.securityDeposit,
+      inquiryMessage: this.inquiryMessage,
+      leadSource: this.leadSource,
       documents: this.documents,
       notes: this.notes,
       internalNotes: this.internalNotes,

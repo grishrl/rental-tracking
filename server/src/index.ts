@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { closeContainer, container, initializeContainer } from './container/container';
 import { RentalService } from './services/rental.service';
 import { UserService } from './services/user.service';
@@ -17,6 +18,18 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(
+  '/api/uploads/transactions',
+  express.static(path.resolve(__dirname, '../../store/cashflow/attachments'))
+);
+app.use(
+  '/api/uploads/rentals',
+  express.static(path.resolve(__dirname, '../../store/rental/photos'))
+);
+app.use(
+  '/api/uploads/rental-docs',
+  express.static(path.resolve(__dirname, '../../store/rental/tenant-documents'))
+);
 
 let rentalService: RentalService;
 let userService: UserService;

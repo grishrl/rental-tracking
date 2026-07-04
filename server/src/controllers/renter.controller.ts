@@ -70,6 +70,15 @@ export class RenterController {
     }
   };
 
+  createInquiry = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const renter = await this.renterService.createInquiry(req.body);
+      res.status(201).json(renter);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
   update = async (req: Request, res: Response): Promise<void> => {
     try {
       const renter = await this.renterService.updateRenter(req.params.id, req.body);

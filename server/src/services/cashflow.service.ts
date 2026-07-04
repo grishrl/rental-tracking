@@ -1,4 +1,11 @@
-import { ICashFlow, CashFlow, TransactionType, TransactionCategory, TransactionStatus } from '../models/cashflow.model';
+import {
+  ICashFlow,
+  CashFlow,
+  ITransactionAttachment,
+  TransactionType,
+  TransactionCategory,
+  TransactionStatus,
+} from '../models/cashflow.model';
 import { ICashFlowRepository } from '../repositories/cashflow.repository.interface';
 import { IBucketRepository } from '../repositories/bucket.repository.interface';
 
@@ -31,7 +38,20 @@ export class CashFlowService {
       status: transactionData.status || 'pending'
     });
 
-    return this.cashFlowRepository.create(transaction.toJSON());
+    const created = await this.cashFlowRepository.create(transaction.toJSON());
+
+    // Allow immediate bucket updates for completed transactions (for example, bucket allocations).
+    if (created.status === 'completed') {
+      await this.applyTransactionToBuckets(created);
+
+      const updated = await this.cashFlowRepository.update(created.id, {
+        processedDate: created.processedDate || new Date()
+      });
+
+      return (updated || created) as ICashFlow;
+    }
+
+    return created;
   }
 
   async updateTransaction(id: string, updates: Partial<Omit<ICashFlow, 'id' | 'createdAt' | 'updatedAt'>>): Promise<ICashFlow | null> {
@@ -41,6 +61,32 @@ export class CashFlowService {
     }
 
     return this.cashFlowRepository.update(id, updates);
+  }
+
+  async attachFileToTransaction(
+    id: string,
+    attachment: Omit<ITransactionAttachment, 'id' | 'uploadedAt'>
+  ): Promise<ICashFlow> {
+    const existingTransaction = await this.cashFlowRepository.findById(id);
+    if (!existingTransaction) {
+      throw new Error(`Transaction with id ${id} not found`);
+    }
+
+    const nextAttachment: ITransactionAttachment = {
+      ...attachment,
+      id: this.generateAttachmentId(),
+      uploadedAt: new Date(),
+    };
+
+    const updated = await this.cashFlowRepository.update(id, {
+      attachments: [...(existingTransaction.attachments || []), nextAttachment],
+    });
+
+    if (!updated) {
+      throw new Error(`Failed to attach file to transaction ${id}`);
+    }
+
+    return updated;
   }
 
   async deleteTransaction(id: string): Promise<boolean> {
@@ -67,53 +113,7 @@ export class CashFlowService {
       throw new Error('Only pending transactions can be processed');
     }
 
-    // Update bucket balance if transaction is allocated to a bucket
-    if (transaction.bucketId && (transaction.type === 'income' || transaction.type === 'allocation')) {
-      const bucket = await this.bucketRepository.findById(transaction.bucketId);
-      if (bucket) {
-        const amount = Math.abs(transaction.amount);
-        await this.bucketRepository.update(transaction.bucketId, {
-          currentAmount: bucket.currentAmount + amount
-        });
-      }
-    }
-
-    // Handle bucket withdrawals
-    if (transaction.bucketId && transaction.type === 'expense') {
-      const bucket = await this.bucketRepository.findById(transaction.bucketId);
-      if (bucket) {
-        const amount = Math.abs(transaction.amount);
-        if (bucket.currentAmount < amount) {
-          throw new Error('Insufficient funds in bucket');
-        }
-        await this.bucketRepository.update(transaction.bucketId, {
-          currentAmount: bucket.currentAmount - amount
-        });
-      }
-    }
-
-    // Handle transfers between buckets
-    if (transaction.type === 'transfer' && transaction.sourceBucketId && transaction.bucketId) {
-      const sourceBucket = await this.bucketRepository.findById(transaction.sourceBucketId);
-      const targetBucket = await this.bucketRepository.findById(transaction.bucketId);
-      
-      if (!sourceBucket || !targetBucket) {
-        throw new Error('Source or target bucket not found');
-      }
-
-      const amount = Math.abs(transaction.amount);
-      if (sourceBucket.currentAmount < amount) {
-        throw new Error('Insufficient funds in source bucket');
-      }
-
-      await this.bucketRepository.update(transaction.sourceBucketId, {
-        currentAmount: sourceBucket.currentAmount - amount
-      });
-
-      await this.bucketRepository.update(transaction.bucketId, {
-        currentAmount: targetBucket.currentAmount + amount
-      });
-    }
+    await this.applyTransactionToBuckets(transaction);
 
     return this.cashFlowRepository.update(id, {
       status: 'completed',
@@ -132,6 +132,21 @@ export class CashFlowService {
     }
 
     return this.cashFlowRepository.update(id, { status: 'cancelled' }) as Promise<ICashFlow>;
+  }
+
+  async getAllTransactions(limit?: number, offset?: number): Promise<ICashFlow[]> {
+    const transactions = await this.cashFlowRepository.findAll();
+    const sorted = transactions.sort((a, b) => b.transactionDate.getTime() - a.transactionDate.getTime());
+
+    if (offset) {
+      return limit ? sorted.slice(offset, offset + limit) : sorted.slice(offset);
+    }
+
+    return limit ? sorted.slice(0, limit) : sorted;
+  }
+
+  async getTransactionById(id: string): Promise<ICashFlow | null> {
+    return this.cashFlowRepository.findById(id);
   }
 
   async getUserTransactions(userId: string, limit?: number, offset?: number): Promise<ICashFlow[]> {
@@ -154,13 +169,21 @@ export class CashFlowService {
   async getCashFlowSummary(userId: string, startDate: Date, endDate: Date): Promise<CashFlowSummary> {
     const totalIncome = await this.cashFlowRepository.getTotalIncomeByPeriod(userId, startDate, endDate);
     const totalExpenses = await this.cashFlowRepository.getTotalExpensesByPeriod(userId, startDate, endDate);
+    const totalAllocations = (await this.cashFlowRepository.findByType('allocation'))
+      .filter(t =>
+        t.userId === userId &&
+        t.status === 'completed' &&
+        t.transactionDate >= startDate &&
+        t.transactionDate <= endDate
+      )
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
     const pendingTransactions = (await this.cashFlowRepository.findPendingTransactions()).filter(t => t.userId === userId).length;
     const recurringTransactions = (await this.cashFlowRepository.findRecurringTransactions()).filter(t => t.userId === userId).length;
 
     return {
       totalIncome: Math.round(totalIncome * 100) / 100,
       totalExpenses: Math.round(totalExpenses * 100) / 100,
-      netCashFlow: Math.round((totalIncome - totalExpenses) * 100) / 100,
+      netCashFlow: Math.round((totalIncome - totalExpenses - totalAllocations) * 100) / 100,
       pendingTransactions,
       recurringTransactions
     };
@@ -284,6 +307,49 @@ export class CashFlowService {
     return nextDate;
   }
 
+  private async applyTransactionToBuckets(transaction: ICashFlow): Promise<void> {
+    // Update bucket balance if transaction is allocated to a bucket
+    if (transaction.bucketId && (transaction.type === 'income' || transaction.type === 'allocation')) {
+      await this.adjustBucketAmount(transaction.bucketId, Math.abs(transaction.amount));
+    }
+
+    // Handle bucket withdrawals
+    if (transaction.bucketId && transaction.type === 'expense') {
+      await this.adjustBucketAmount(transaction.bucketId, -Math.abs(transaction.amount));
+    }
+
+    // Handle transfers between buckets
+    if (transaction.type === 'transfer' && transaction.sourceBucketId && transaction.bucketId) {
+      const amount = Math.abs(transaction.amount);
+      await this.adjustBucketAmount(transaction.sourceBucketId, -amount);
+      await this.adjustBucketAmount(transaction.bucketId, amount);
+    }
+  }
+
+  private async adjustBucketAmount(bucketId: string, delta: number): Promise<void> {
+    const bucket = await this.bucketRepository.findById(bucketId);
+    if (!bucket) {
+      throw new Error('Source or target bucket not found');
+    }
+
+    const nextAmount = bucket.currentAmount + delta;
+    if (nextAmount < 0) {
+      throw new Error('Insufficient funds in bucket');
+    }
+
+    const targetAmount = bucket.targetAmount > 0 ? bucket.targetAmount : 1;
+    const percentComplete = Math.round((Math.min(nextAmount / targetAmount, 1) * 100) * 100) / 100;
+
+    await this.bucketRepository.update(bucketId, {
+      currentAmount: nextAmount,
+      progress: {
+        ...(bucket.progress || {}),
+        percentComplete,
+        averageMonthlyContribution: bucket.progress?.averageMonthlyContribution ?? 0
+      }
+    });
+  }
+
   private validateTransactionData(data: Omit<ICashFlow, 'id' | 'createdAt' | 'updatedAt'>): void {
     if (!data.description || data.description.trim().length === 0) {
       throw new Error('Transaction description is required');
@@ -312,5 +378,9 @@ export class CashFlowService {
     if ((data.type === 'transfer' || data.type === 'allocation') && !data.bucketId) {
       throw new Error('Transfer and allocation transactions require a target bucket ID');
     }
+  }
+
+  private generateAttachmentId(): string {
+    return Math.random().toString(36).substring(2, 11);
   }
 }

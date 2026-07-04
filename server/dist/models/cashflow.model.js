@@ -19,6 +19,7 @@ class CashFlow {
         this.recurring = data.recurring;
         this.tags = data.tags || [];
         this.notes = data.notes;
+        this.attachments = data.attachments || [];
         this.createdAt = new Date();
         this.updatedAt = new Date();
     }
@@ -80,6 +81,7 @@ class CashFlow {
             recurring: this.recurring,
             tags: this.tags,
             notes: this.notes,
+            attachments: this.attachments,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
         };
